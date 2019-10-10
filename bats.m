@@ -1,4 +1,4 @@
-classdef bats
+classdef bats < handle
 
 %--------------------------------------------------
 %     PROPERTIES
