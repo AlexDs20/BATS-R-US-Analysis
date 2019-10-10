@@ -1,2 +1,0 @@
-classdef sub < super
-end
