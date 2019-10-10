@@ -62,10 +62,10 @@ classdef batsUni < bats
     %--------------------------------------------------
     %     Getters
     function Global = get.Global(obj)
-%      Global.File = obj.GlobalFile;
-%      Global.Time = obj.GlobalTime;
-%      Global.Units= obj.GlobalUnits;
-%      Global.CoordinateSystem = obj.GlobalCoordinateSystem;
+      Global.File = obj.GlobalFile;
+      Global.Time = obj.GlobalTime;
+      Global.Units= obj.GlobalUnits;
+      Global.CoordinateSystem = obj.GlobalCoordinateSystem;
       Global.CellSize = obj.GlobalCellSize;
       Global.XRange = obj.GlobalXRange;
       Global.YRange = obj.GlobalYRange;
