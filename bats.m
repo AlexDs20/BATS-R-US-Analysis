@@ -194,7 +194,7 @@ classdef bats < handle
       zrange = [];
 
       if isempty(var)
-        Fields = obj1.listNonEmptyFields;
+        Fields = obj.listNonEmptyFields;
         var = {'bx','by','bz','ux','uy','uz','jx','jy','jz','rho','p'};
         var = intersect(var,Fields);
       end
@@ -203,19 +203,19 @@ classdef bats < handle
         xr = varargin{ find(strcmp('xrange',varargin))+1 };
         xrange = [min(xr,[],'all') : single(cellSize) : max(xr,[],'all')];
       else
-        xrange = [min(obj1.x,[],'all') : single(cellSize) : max(obj1.x,[],'all')];
+        xrange = [min(obj.x,[],'all') : single(cellSize) : max(obj.x,[],'all')];
       end
       if find(strcmp('yrange',varargin))
         yr = varargin{ find(strcmp('yrange',varargin))+1 };
         yrange = [min(yr,[],'all') : single(cellSize) : max(yr,[],'all')];
       else
-        yrange = [min(obj1.y,[],'all') : single(cellSize) : max(obj1.y,[],'all')];
+        yrange = [min(obj.y,[],'all') : single(cellSize) : max(obj.y,[],'all')];
       end
       if find(strcmp('zrange',varargin))
         zr = varargin{ find(strcmp('zrange',varargin))+1 };
         zrange = [min(zr,[],'all') : single(cellSize) : max(zr,[],'all')];
       else
-        zrange = [min(obj1.z,[],'all') : single(cellSize) : max(obj1.z,[],'all')];
+        zrange = [min(obj.z,[],'all') : single(cellSize) : max(obj.z,[],'all')];
       end
 
       uniData = batsUni(obj,'xrange',xrange,'yrange',yrange,'zrange',zrange, ...
