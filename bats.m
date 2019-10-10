@@ -61,8 +61,8 @@ classdef bats < handle
     %
     % INPUT:  If no inputs => returns empty object
     %   KWARGS:
-    %         'File': string: '/path/to/cdf/file.cdf'
-    %         'Variables', var : with var a cell array of strings with the name of the variables to load.
+    %         'file': string: '/path/to/cdf/file.cdf'
+    %         'variables', var : with var a cell array of strings with the name of the variables to load.
     %                            If not specified, load all variables
     %                            {'x','y','z','bx','by','bz','b1x','b1y','b1z',
     %                             'ux','uy','uz','jx','jy','jz','rho','p','e'}
@@ -79,11 +79,11 @@ classdef bats < handle
         disp('Wrong number of inputs. Inputs go by pair, keyword + value');
         return
       end
-      if find(strcmp('File',varargin))
-        s = varargin{ find(strcmp('File',varargin))+1 };
+      if find(strcmp('file',varargin))
+        s = varargin{ find(strcmp('file',varargin))+1 };
       end
-      if find(strcmp('Variables',varargin))
-        var = varargin{ find(strcmp('Variables',varargin))+1 };
+      if find(strcmp('variables',varargin))
+        var = varargin{ find(strcmp('variables',varargin))+1 };
         var{end+1} = 'x'; var{end+1} = 'y'; var{end+1} = 'z';
         var = intersect(var,var);
       else
@@ -159,7 +159,7 @@ classdef bats < handle
     end
     %------------------------------------------------------------
 
-    %------------------------------
+    %------------------------------------------------------------
     %   Modify the data in obj
     function obj = loadFields(obj,var)
 
@@ -188,77 +188,115 @@ classdef bats < handle
       end
     end
     %------------------------------------------------------------
-%     function uniData = toUniformGrid(obj,cellSize,var,varargin)
-%     % function uniData = toUniformGrid(obj,cellSize,var,varargin)
-%     %   INPUT:
-%     %           obj = bats object
-%     %           cellSize = in R units
-%     %           var = cellarray of variables e.g. {'bx','by'}
-%     %     varargin:
-%     %           'xrange': giving the range of values for the interp
-%     %           'yrange': giving the range of values for the interp
-%     %           'zrange': giving the range of values for the interp
-%     %
-%     %   OUTPUT:
-%     %           uniData properties:
-%     %               xmesh
-%     %               ymesh
-%     %               zmesh
-%     %               (var{i})
-%     %
-%
-%       % Warning
-%       warning('This may take a long time. Make sure you have enough memory!');
-%
-%       xrange = [];
-%       yrange = [];
-%       zrange = [];
-%
-%       if isempty(var)
-%         var = {'bx','by','bz','ux','uy','uz','jx','jy','jz','rho','p'};
-%       end
-%
-%       if find(strcmp('xrange',varargin)) & find(strcmp('yrange',varargin)) & find(strcmp('zrange',varargin))
-%         xr = varargin{ find(strcmp('xrange',varargin))+1 };
-%         yr = varargin{ find(strcmp('yrange',varargin))+1 };
-%         zr = varargin{ find(strcmp('zrange',varargin))+1 };
-%         xrange = [xr(1):single(cellSize):xr(end)];
-%         yrange = [yr(1):single(cellSize):yr(end)];
-%         zrange = [zr(1):single(cellSize):zr(end)];
-%       else
-%         xrange = [min(obj.x.data):single(cellSize):max(obj.x.data)];
-%         yrange = [min(obj.y.data):single(cellSize):max(obj.y.data)];
-%         zrange = [min(obj.z.data):single(cellSize):max(obj.z.data)];
-%       end
-%
-%       % Constrain the xyz used for interpolation
-%       shift = 5*cellSize;
-%       ix = find(obj.x.data >= xrange(1)-shift & obj.x.data <= xrange(end)+shift);
-%       iy = find(obj.y.data >= yrange(1)-shift & obj.y.data <= yrange(end)+shift);
-%       iz = find(obj.z.data >= zrange(1)-shift & obj.z.data <= zrange(end)+shift);
-%       ind = intersect(ix,intersect(iy,iz));
-%       x = double(obj.x.data(ind));
-%       y = double(obj.y.data(ind));
-%       z = double(obj.z.data(ind));
-%
-%       [xmesh,ymesh,zmesh] = ndgrid(xrange,yrange,zrange);
-%       uniData.xmesh = squeeze(xmesh);
-%       uniData.ymesh = squeeze(ymesh);
-%       uniData.zmesh = squeeze(zmesh);
-%
-%       % Keep same info:
-%       for i = 1 : numel(var)
-%         disp(['Reshaping variable: ',var{i}]);
-%         uniData.(var{i}).name =  obj.(var{i}).name;
-%         uniData.(var{i}).units = obj.(var{i}).units;
-%         uniData.(var{i}).coordinateSystem = obj.(var{i}).coordinateSystem;
-%
-%         F = scatteredInterpolant(x,y,z,double(obj.(var{i}).data(ind)));
-%         uniData.(var{i}).data = single(F(double(uniData.xmesh), double(uniData.ymesh), ...
-%                                          double(uniData.zmesh)));
-%       end
-%     end
-%
+    function uniData = toBatsUni(obj,cellSize,var,varargin)
+      xrange = [];
+      yrange = [];
+      zrange = [];
+
+      if isempty(var)
+        Fields = obj1.listNonEmptyFields;
+        var = {'bx','by','bz','ux','uy','uz','jx','jy','jz','rho','p'};
+        var = intersect(var,Fields);
+      end
+
+      if find(strcmp('xrange',varargin))
+        xr = varargin{ find(strcmp('xrange',varargin))+1 };
+        xrange = [min(xr,[],'all') : single(cellSize) : max(xr,[],'all')];
+      else
+        xrange = [min(obj1.x,[],'all') : single(cellSize) : max(obj1.x,[],'all')];
+      end
+      if find(strcmp('yrange',varargin))
+        yr = varargin{ find(strcmp('yrange',varargin))+1 };
+        yrange = [min(yr,[],'all') : single(cellSize) : max(yr,[],'all')];
+      else
+        yrange = [min(obj1.y,[],'all') : single(cellSize) : max(obj1.y,[],'all')];
+      end
+      if find(strcmp('zrange',varargin))
+        zr = varargin{ find(strcmp('zrange',varargin))+1 };
+        zrange = [min(zr,[],'all') : single(cellSize) : max(zr,[],'all')];
+      else
+        zrange = [min(obj1.z,[],'all') : single(cellSize) : max(obj1.z,[],'all')];
+      end
+
+      uniData = batsUni(obj,'xrange',xrange,'yrange',yrange,'zrange',zrange, ...
+                        'cellsize',cellSize,'interpolate',true,'variables', var);
+    end
+    %------------------------------------------------------------
+    function [xmesh,ymesh,zmesh] = toUniformGrid(obj,obj1,cellSize,var,varargin)
+    % function [xmesh,ymesh,zmesh] = toUniformGrid(obj,cellSize,var,varargin)
+    %
+    %   INPUT:
+    %           obj = object that will contain the uniform grid
+    %           obj1 = object from which it will take the data
+    %           cellSize = in R units
+    %           var = cellarray of variables e.g. {'bx','by'}
+    %     varargin:
+    %           'xrange': giving the range of values for the interp
+    %           'yrange': giving the range of values for the interp
+    %           'zrange': giving the range of values for the interp
+    %
+    %   OUTPUT:
+    %           xmesh
+    %           ymesh
+    %           zmesh
+
+      % Warning
+      warning('This may take a long time. Make sure you have enough memory!');
+
+      xrange = [];
+      yrange = [];
+      zrange = [];
+
+      if isempty(var)     % We only care about the original fields. The rest can be quickly recomputed
+        Fields = obj1.listNonEmptyFields;
+        var = {'bx','by','bz','ux','uy','uz','jx','jy','jz','rho','p'};
+        var = intersect(var,Fields);
+      end
+
+      if find(strcmp('xrange',varargin))
+        xr = varargin{ find(strcmp('xrange',varargin))+1 };
+        xrange = [min(xr,[],'all') : single(cellSize) : max(xr,[],'all')];
+      else
+        xrange = [min(obj1.x,[],'all') : single(cellSize) : max(obj1.x,[],'all')];
+      end
+      if find(strcmp('yrange',varargin))
+        yr = varargin{ find(strcmp('yrange',varargin))+1 };
+        yrange = [min(yr,[],'all') : single(cellSize) : max(yr,[],'all')];
+      else
+        yrange = [min(obj1.y,[],'all') : single(cellSize) : max(obj1.y,[],'all')];
+      end
+      if find(strcmp('zrange',varargin))
+        zr = varargin{ find(strcmp('zrange',varargin))+1 };
+        zrange = [min(zr,[],'all') : single(cellSize) : max(zr,[],'all')];
+      else
+        zrange = [min(obj1.z,[],'all') : single(cellSize) : max(obj1.z,[],'all')];
+      end
+
+      % Constrain the xyz used for interpolation
+      shift = 5*cellSize;
+      ix = find(obj1.x >= xrange(1)-shift & obj1.x <= xrange(end)+shift);
+      iy = find(obj1.y >= yrange(1)-shift & obj1.y <= yrange(end)+shift);
+      iz = find(obj1.z >= zrange(1)-shift & obj1.z <= zrange(end)+shift);
+      ind = intersect(ix,intersect(iy,iz));
+      x = double(obj1.x(ind));
+      y = double(obj1.y(ind));
+      z = double(obj1.z(ind));
+
+      [xmesh,ymesh,zmesh] = ndgrid(xrange,yrange,zrange);
+      xmesh = squeeze(xmesh);
+      ymesh = squeeze(ymesh);
+      zmesh = squeeze(zmesh);
+
+      % Keep same info:
+      for i = 1 : numel(var)
+        disp(['Reshaping variable: ',var{i}]);
+
+        F = scatteredInterpolant(x,y,z,double(obj1.(var{i})(ind)));
+
+        obj.(var{i}) = single(F(double(xmesh), double(ymesh), double(zmesh)));
+      end
+    end
+
     %----------------------------------------
     %   Calc functions.
     %------------------------------------------------------------
@@ -448,53 +486,11 @@ classdef bats < handle
       obj.getIndexDomain(varargin{:});
 
       % Go through each field and only keep the desired points
-      if ~isempty(obj.x) obj.x = obj.x(obj.IndicesReducedDomain); end
-      if ~isempty(obj.y) obj.y = obj.y(obj.IndicesReducedDomain); end
-      if ~isempty(obj.z) obj.z = obj.z(obj.IndicesReducedDomain); end
+      Fields = obj.listNonEmptyFields;
 
-      if ~isempty(obj.bx) obj.bx = obj.bx(obj.IndicesReducedDomain); end
-      if ~isempty(obj.by) obj.by = obj.by(obj.IndicesReducedDomain); end
-      if ~isempty(obj.bz) obj.bz = obj.bz(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.b1x) obj.b1x = obj.b1x(obj.IndicesReducedDomain); end
-      if ~isempty(obj.b1y) obj.b1y = obj.b1y(obj.IndicesReducedDomain); end
-      if ~isempty(obj.b1z) obj.b1z = obj.b1z(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.ux) obj.ux = obj.ux(obj.IndicesReducedDomain); end
-      if ~isempty(obj.uy) obj.uy = obj.uy(obj.IndicesReducedDomain); end
-      if ~isempty(obj.uz) obj.uz = obj.uz(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.jx) obj.jx = obj.jx(obj.IndicesReducedDomain); end
-      if ~isempty(obj.jy) obj.jy = obj.jy(obj.IndicesReducedDomain); end
-      if ~isempty(obj.jz) obj.jz = obj.jz(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.rho) obj.rho = obj.rho(obj.IndicesReducedDomain); end
-      if ~isempty(obj.p) obj.p = obj.p(obj.IndicesReducedDomain); end
-      if ~isempty(obj.e) obj.e = obj.e(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.b) obj.b = obj.b(obj.IndicesReducedDomain); end
-      if ~isempty(obj.b1) obj.b1 = obj.b1(obj.IndicesReducedDomain); end
-      if ~isempty(obj.u) obj.u = obj.u(obj.IndicesReducedDomain); end
-      if ~isempty(obj.j) obj.j = obj.j(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.jxbx) obj.jxbx = obj.jxbx(obj.IndicesReducedDomain); end
-      if ~isempty(obj.jxby) obj.jxby = obj.jxby(obj.IndicesReducedDomain); end
-      if ~isempty(obj.jxbz) obj.jxbz = obj.jxbz(obj.IndicesReducedDomain); end
-      if ~isempty(obj.jxb) obj.jxb = obj.jxb(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.Ex) obj.Ex = obj.Ex(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Ey) obj.Ey = obj.Ey(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Ez) obj.Ez = obj.Ez(obj.IndicesReducedDomain); end
-      if ~isempty(obj.E) obj.E = obj.E(obj.IndicesReducedDomain); end
-
-      if ~isempty(obj.Temp) obj.Temp = obj.Temp(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Pb) obj.Pb = obj.Pb(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Beta) obj.Beta = obj.Beta(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Alfven) obj.Alfven = obj.Alfven(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Vth) obj.Vth = obj.Vth(obj.IndicesReducedDomain); end
-      if ~isempty(obj.Gyroradius) obj.Gyroradius = obj.Gyroradius(obj.IndicesReducedDomain); end
-      if ~isempty(obj.PlasmaFreq) obj.PlasmaFreq = obj.PlasmaFreq(obj.IndicesReducedDomain); end
-      if ~isempty(obj.InertialLength) obj.InertialLength = obj.InertialLength(obj.IndicesReducedDomain); end
+      for i = 1 : numel(Fields)
+        obj.(Fields{i}) = obj.(Fields{i})(obj.IndicesReducedDomain);
+      end
     end
     %------------------------------------------------------------
 
@@ -522,6 +518,56 @@ classdef bats < handle
       iy = find( obj.y>=min(yrange,[],'all') & obj.y<=max(yrange,[],'all') );
       iz = find( obj.z>=min(zrange,[],'all') & obj.z<=max(zrange,[],'all') );
       obj.IndicesReducedDomain = intersect(ix,intersect(iy,iz));
+    end
+    function Fields = listNonEmptyFields(obj)
+      Fields = {};
+      if ~isempty(obj.x)    Fields{end+1} = 'x';      end
+      if ~isempty(obj.y)    Fields{end+1} = 'y';      end
+      if ~isempty(obj.z)    Fields{end+1} = 'z';      end
+
+      if ~isempty(obj.bx)   Fields{end+1} = 'bx';     end
+      if ~isempty(obj.by)   Fields{end+1} = 'by';     end
+      if ~isempty(obj.bz)   Fields{end+1} = 'bz';     end
+
+      if ~isempty(obj.b1x)  Fields{end+1} = 'b1x';    end
+      if ~isempty(obj.b1y)  Fields{end+1} = 'b1y';    end
+      if ~isempty(obj.b1z)  Fields{end+1} = 'b1z';    end
+
+      if ~isempty(obj.ux)   Fields{end+1} = 'ux';     end
+      if ~isempty(obj.uy)   Fields{end+1} = 'uy';     end
+      if ~isempty(obj.uz)   Fields{end+1} = 'uz';     end
+
+      if ~isempty(obj.jx)   Fields{end+1} = 'jx';     end
+      if ~isempty(obj.jy)   Fields{end+1} = 'jy';     end
+      if ~isempty(obj.jz)   Fields{end+1} = 'jz';     end
+
+      if ~isempty(obj.rho)  Fields{end+1} = 'rho';    end
+      if ~isempty(obj.p)    Fields{end+1} = 'p';      end
+      if ~isempty(obj.e)    Fields{end+1} = 'e';      end
+
+      if ~isempty(obj.b)    Fields{end+1} = 'b';      end
+      if ~isempty(obj.b1)   Fields{end+1} = 'b1';     end
+      if ~isempty(obj.u)    Fields{end+1} = 'u';      end
+      if ~isempty(obj.j)    Fields{end+1} = 'j';      end
+
+      if ~isempty(obj.jxbx) Fields{end+1} = 'jxbx';   end
+      if ~isempty(obj.jxby) Fields{end+1} = 'jxby';   end
+      if ~isempty(obj.jxbz) Fields{end+1} = 'jxbz';   end
+      if ~isempty(obj.jxb)  Fields{end+1} = 'jxb';    end
+
+      if ~isempty(obj.Ex)   Fields{end+1} = 'Ex';     end
+      if ~isempty(obj.Ey)   Fields{end+1} = 'Ey';     end
+      if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
+      if ~isempty(obj.E)    Fields{end+1} = 'E';      end
+
+      if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
+      if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
+      if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
+      if ~isempty(obj.Beta)             Fields{end+1} = 'Beta';             end
+      if ~isempty(obj.Alfven)           Fields{end+1} = 'Alfven';           end
+      if ~isempty(obj.Gyroradius)       Fields{end+1} = 'Gyroradius';       end
+      if ~isempty(obj.PlasmaFreq)       Fields{end+1} = 'PlasmaFreq';       end
+      if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
     end
   end   % Methods (hidden, protected)
 

@@ -1,10 +1,119 @@
 classdef batsUni < bats
-  properties (hidden)
-%    Vortx, Vorty, Vortz, Vort
-%    GradPx, GradPy, GradPz, GradP
-%    GradPbx, GradPby, GradPbz, GradPb
+
+  properties (Hidden, GetAccess = protected, SetAccess = protected)
+
+    % Global
+    GlobalCellSize
+    GlobalXRange
+    GlobalYRange
+    GlobalZRange
+    GlobalInterpolation = false;
+
+    %------------------------------
+    %     COMPUTED FIELDS
+    Xmesh, Ymesh, Zmesh
+
+    Vorticityx, Vorticityy, Vorticityz, Vorticity
+    GradPx, GradPy, GradPz, GradP
+    GradPbx, GradPby, GradPbz, GradPb
+
   end
+
   methods
+    function obj = batsUni(varargin)
+      if isa(varargin{1},'bats')
+        obj = varargin{1};
+      end
+      if find(strcmp('xrange',varargin))
+        obj.GlobalXRange = varargin{ find(strcmp('xrange',varargin))+1 };
+      else
+        obj.GlobalXRange = [min(obj.x,[],'all') max(obj.x,[],'all')];
+      end
+      if find(strcmp('yrange',varargin))
+        obj.GlobalYRange = varargin{ find(strcmp('yrange',varargin))+1 };
+      else
+        obj.GlobalYRange = [min(obj.y,[],'all') max(obj.y,[],'all')];
+      end
+      if find(strcmp('zrange',varargin))
+        obj.GlobalZRange = varargin{ find(strcmp('zrange',varargin))+1 };
+      else
+        obj.GlobalZRange = [min(obj.z,[],'all') max(obj.z,[],'all')];
+      end
+      if find(strcmp('cellsize',varargin))
+        obj.GlobalCellSize = varargin{ find(strcmp('cellsize',varargin))+1 };
+      end
+      if find(strcmp('interpolate',varargin))
+        obj.GlobalInterpolation = varargin{ find(strcmp('interpolate',varargin))+1 };
+      end
+     if find(strcmp('variables',varargin))
+        var = varargin{ find(strcmp('variables',varargin))+1 };
+      end
+
+      if isa(varargin{1},'bats') & ~isempty(obj.GlobalCellSize) ...
+                  & find(strcmp('variables',varargin)) & obj.GlobalInterpolation
+
+        [x,y,z] = obj.toUniformGrid(varargin{1},obj.GlobalCellSize, var);
+        obj.Xmesh = x;
+        obj.Ymesh = y;
+        obj.Zmesh = z;
+      end
+    end
+
+    %--------------------------------------------------
+    %     Getters
+    function Global = get.Global(obj)
+%      Global.File = obj.GlobalFile;
+%      Global.Time = obj.GlobalTime;
+%      Global.Units= obj.GlobalUnits;
+%      Global.CoordinateSystem = obj.GlobalCoordinateSystem;
+      Global.CellSize = obj.GlobalCellSize;
+      Global.XRange = obj.GlobalXRange;
+      Global.YRange = obj.GlobalYRange;
+      Global.ZRange = obj.GlobalZRange;
+    end
+    %--------------------------------------------------
+    function Derived = get.Derived(obj)
+      % From bats class
+      Derived.b = obj.b;
+      Derived.b1 = obj.b1;
+      Derived.u = obj.u;
+      Derived.j = obj.j;
+      Derived.jxbx = obj.jxbx;
+      Derived.jxby = obj.jxby;
+      Derived.jxbz = obj.jxbz;
+      Derived.jxb = obj.jxbz;
+      Derived.Ex = obj.Ex;
+      Derived.Ey = obj.Ey;
+      Derived.Ez = obj.Ez;
+      Derived.E = obj.E;
+      Derived.Temp = obj.Temp;
+      Derived.Pb = obj.Pb;
+      Derived.Beta = obj.Beta;
+      Derived.Alfven = obj.Alfven;
+      Derived.Vth = obj.Vth;
+      Derived.Gyroradius = obj.Gyroradius;
+      Derived.PlasmaFrequency = obj.PlasmaFreq;
+      Derived.InertialLength = obj.InertialLength;
+
+      % Specific for batsUni
+      Derived.Vorticity  = obj.Vorticity;
+      Derived.Vorticityx = obj.Vorticityx;
+      Derived.Vorticityy = obj.Vorticityy;
+      Derived.Vorticityz = obj.Vorticityz;
+
+      Derived.GradP  = obj.GradP;
+      Derived.GradPx = obj.GradPx;
+      Derived.GradPy = obj.GradPy;
+      Derived.GradPz = obj.GradPz;
+
+      Derived.GradPb  = obj.GradPb;
+      Derived.GradPbx = obj.GradPbx;
+      Derived.GradPby = obj.GradPby;
+      Derived.GradPbz = obj.GradPbz;
+    end
+    %--------------------------------------------------
+
+
 %     %--------------------------------------------------
 %     function obj = calc_vorticity(obj)
 %
