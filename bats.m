@@ -4,15 +4,15 @@ classdef bats < handle
 %     PROPERTIES
   properties
     % General properties
-    Global
+    Global = struct();
 
     % BATS-R-US Ouput
-    Output
+    Output = struct();
   end
 
   properties (Dependent)
     % BATS-R-US Derived
-    Derived
+    Derived = struct();
   end
 
   properties (Hidden, GetAccess = protected, SetAccess = protected)
@@ -73,7 +73,6 @@ classdef bats < handle
     % USE:
 
       if nargin == 0
-        disp('No Inputs. Return empty object.')
         return
       elseif mod(nargin,2) == 1
         disp('Wrong number of inputs. Inputs go by pair, keyword + value');
@@ -108,54 +107,15 @@ classdef bats < handle
     %--------------------------------------------------
     %     Getters
     function Global = get.Global(obj)
-      Global.File = obj.GlobalFile;
-      Global.Time = obj.GlobalTime;
-      Global.Units= obj.GlobalUnits;
-      Global.CoordinateSystem = obj.GlobalCoordinateSystem;
+      Global = obj.getGlobal;
     end
     %------------------------------------------------------------
     function Output = get.Output(obj)
-      Output.x = obj.x;
-      Output.y = obj.y;
-      Output.z = obj.z;
-      Output.bx = obj.bx;
-      Output.by = obj.by;
-      Output.bz = obj.bz;
-      Output.b1x = obj.b1x;
-      Output.b1y = obj.b1y;
-      Output.b1z = obj.b1z;
-      Output.ux = obj.ux;
-      Output.uy = obj.uy;
-      Output.uz = obj.uz;
-      Output.jx = obj.jx;
-      Output.jy = obj.jy;
-      Output.jz = obj.jz;
-      Output.rho = obj.rho;
-      Output.p = obj.p;
-      Output.e = obj.e;
+      Output = obj.getOutput;
     end
     %------------------------------------------------------------
     function Derived = get.Derived(obj)
-      Derived.b = obj.b;
-      Derived.b1 = obj.b1;
-      Derived.u = obj.u;
-      Derived.j = obj.j;
-      Derived.jxbx = obj.jxbx;
-      Derived.jxby = obj.jxby;
-      Derived.jxbz = obj.jxbz;
-      Derived.jxb = obj.jxbz;
-      Derived.Ex = obj.Ex;
-      Derived.Ey = obj.Ey;
-      Derived.Ez = obj.Ez;
-      Derived.E = obj.E;
-      Derived.Temp = obj.Temp;
-      Derived.Pb = obj.Pb;
-      Derived.Beta = obj.Beta;
-      Derived.Alfven = obj.Alfven;
-      Derived.Vth = obj.Vth;
-      Derived.Gyroradius = obj.Gyroradius;
-      Derived.PlasmaFrequency = obj.PlasmaFreq;
-      Derived.InertialLength = obj.InertialLength;
+      Derived = obj.getDerived;
     end
     %------------------------------------------------------------
 
@@ -291,7 +251,7 @@ classdef bats < handle
       for i = 1 : numel(var)
         disp(['Reshaping variable: ',var{i}]);
 
-        F = scatteredInterpolant(x,y,z,double(obj1.(var{i})(ind)));
+        F = scatteredInterpolant(x,y,z,double(obj1.(var{i})(ind)),'nearest');
 
         obj.(var{i}) = single(F(double(xmesh), double(ymesh), double(zmesh)));
       end
@@ -496,7 +456,63 @@ classdef bats < handle
 
   end   % Methods
 
+  methods (Hidden)
+    %------------------------------
+    %     ACTUAL GETTERS
+    function Global = getGlobal(obj)
+      Global.File = obj.GlobalFile;
+      Global.Time = obj.GlobalTime;
+      Global.Units= obj.GlobalUnits;
+      Global.CoordinateSystem = obj.GlobalCoordinateSystem;
+    end
+    %------------------------------------------------------------
+    function Output = getOutput(obj)
+      Output.x = obj.x;
+      Output.y = obj.y;
+      Output.z = obj.z;
+      Output.bx = obj.bx;
+      Output.by = obj.by;
+      Output.bz = obj.bz;
+      Output.b1x = obj.b1x;
+      Output.b1y = obj.b1y;
+      Output.b1z = obj.b1z;
+      Output.ux = obj.ux;
+      Output.uy = obj.uy;
+      Output.uz = obj.uz;
+      Output.jx = obj.jx;
+      Output.jy = obj.jy;
+      Output.jz = obj.jz;
+      Output.rho = obj.rho;
+      Output.p = obj.p;
+      Output.e = obj.e;
+    end
+    %------------------------------------------------------------
+    function Derived = getDerived(obj)
+      Derived.b = obj.b;
+      Derived.b1 = obj.b1;
+      Derived.u = obj.u;
+      Derived.j = obj.j;
+      Derived.jxbx = obj.jxbx;
+      Derived.jxby = obj.jxby;
+      Derived.jxbz = obj.jxbz;
+      Derived.jxb = obj.jxbz;
+      Derived.Ex = obj.Ex;
+      Derived.Ey = obj.Ey;
+      Derived.Ez = obj.Ez;
+      Derived.E = obj.E;
+      Derived.Temp = obj.Temp;
+      Derived.Pb = obj.Pb;
+      Derived.Beta = obj.Beta;
+      Derived.Alfven = obj.Alfven;
+      Derived.Vth = obj.Vth;
+      Derived.Gyroradius = obj.Gyroradius;
+      Derived.PlasmaFrequency = obj.PlasmaFreq;
+      Derived.InertialLength = obj.InertialLength;
+    end
+  end
+
   methods (Hidden, Access = protected)
+    %------------------------------------------------------------
     function obj = getIndexDomain(obj,varargin)
       if find(strcmp('xrange',varargin))
         xrange = varargin{ find(strcmp('xrange',varargin))+1 };
@@ -519,56 +535,72 @@ classdef bats < handle
       iz = find( obj.z>=min(zrange,[],'all') & obj.z<=max(zrange,[],'all') );
       obj.IndicesReducedDomain = intersect(ix,intersect(iy,iz));
     end
-    function Fields = listNonEmptyFields(obj)
+    %------------------------------------------------------------
+    function Fields = listNonEmptyFields(obj,varargin)
       Fields = {};
-      if ~isempty(obj.x)    Fields{end+1} = 'x';      end
-      if ~isempty(obj.y)    Fields{end+1} = 'y';      end
-      if ~isempty(obj.z)    Fields{end+1} = 'z';      end
+      if isempty(varargin) | strcmp(varargin{1},'Output')
+        if ~isempty(obj.x)    Fields{end+1} = 'x';      end
+        if ~isempty(obj.y)    Fields{end+1} = 'y';      end
+        if ~isempty(obj.z)    Fields{end+1} = 'z';      end
 
-      if ~isempty(obj.bx)   Fields{end+1} = 'bx';     end
-      if ~isempty(obj.by)   Fields{end+1} = 'by';     end
-      if ~isempty(obj.bz)   Fields{end+1} = 'bz';     end
+        if ~isempty(obj.bx)   Fields{end+1} = 'bx';     end
+        if ~isempty(obj.by)   Fields{end+1} = 'by';     end
+        if ~isempty(obj.bz)   Fields{end+1} = 'bz';     end
 
-      if ~isempty(obj.b1x)  Fields{end+1} = 'b1x';    end
-      if ~isempty(obj.b1y)  Fields{end+1} = 'b1y';    end
-      if ~isempty(obj.b1z)  Fields{end+1} = 'b1z';    end
+        if ~isempty(obj.b1x)  Fields{end+1} = 'b1x';    end
+        if ~isempty(obj.b1y)  Fields{end+1} = 'b1y';    end
+        if ~isempty(obj.b1z)  Fields{end+1} = 'b1z';    end
 
-      if ~isempty(obj.ux)   Fields{end+1} = 'ux';     end
-      if ~isempty(obj.uy)   Fields{end+1} = 'uy';     end
-      if ~isempty(obj.uz)   Fields{end+1} = 'uz';     end
+        if ~isempty(obj.ux)   Fields{end+1} = 'ux';     end
+        if ~isempty(obj.uy)   Fields{end+1} = 'uy';     end
+        if ~isempty(obj.uz)   Fields{end+1} = 'uz';     end
 
-      if ~isempty(obj.jx)   Fields{end+1} = 'jx';     end
-      if ~isempty(obj.jy)   Fields{end+1} = 'jy';     end
-      if ~isempty(obj.jz)   Fields{end+1} = 'jz';     end
+        if ~isempty(obj.jx)   Fields{end+1} = 'jx';     end
+        if ~isempty(obj.jy)   Fields{end+1} = 'jy';     end
+        if ~isempty(obj.jz)   Fields{end+1} = 'jz';     end
 
-      if ~isempty(obj.rho)  Fields{end+1} = 'rho';    end
-      if ~isempty(obj.p)    Fields{end+1} = 'p';      end
-      if ~isempty(obj.e)    Fields{end+1} = 'e';      end
+        if ~isempty(obj.rho)  Fields{end+1} = 'rho';    end
+        if ~isempty(obj.p)    Fields{end+1} = 'p';      end
+        if ~isempty(obj.e)    Fields{end+1} = 'e';      end
+      end
 
-      if ~isempty(obj.b)    Fields{end+1} = 'b';      end
-      if ~isempty(obj.b1)   Fields{end+1} = 'b1';     end
-      if ~isempty(obj.u)    Fields{end+1} = 'u';      end
-      if ~isempty(obj.j)    Fields{end+1} = 'j';      end
+      if isempty(varargin) | strcmp(varargin{1},'Derived')
+        if ~isempty(obj.b)    Fields{end+1} = 'b';      end
+        if ~isempty(obj.b1)   Fields{end+1} = 'b1';     end
+        if ~isempty(obj.u)    Fields{end+1} = 'u';      end
+        if ~isempty(obj.j)    Fields{end+1} = 'j';      end
 
-      if ~isempty(obj.jxbx) Fields{end+1} = 'jxbx';   end
-      if ~isempty(obj.jxby) Fields{end+1} = 'jxby';   end
-      if ~isempty(obj.jxbz) Fields{end+1} = 'jxbz';   end
-      if ~isempty(obj.jxb)  Fields{end+1} = 'jxb';    end
+        if ~isempty(obj.jxbx) Fields{end+1} = 'jxbx';   end
+        if ~isempty(obj.jxby) Fields{end+1} = 'jxby';   end
+        if ~isempty(obj.jxbz) Fields{end+1} = 'jxbz';   end
+        if ~isempty(obj.jxb)  Fields{end+1} = 'jxb';    end
 
-      if ~isempty(obj.Ex)   Fields{end+1} = 'Ex';     end
-      if ~isempty(obj.Ey)   Fields{end+1} = 'Ey';     end
-      if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
-      if ~isempty(obj.E)    Fields{end+1} = 'E';      end
+        if ~isempty(obj.Ex)   Fields{end+1} = 'Ex';     end
+        if ~isempty(obj.Ey)   Fields{end+1} = 'Ey';     end
+        if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
+        if ~isempty(obj.E)    Fields{end+1} = 'E';      end
 
-      if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
-      if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
-      if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
-      if ~isempty(obj.Beta)             Fields{end+1} = 'Beta';             end
-      if ~isempty(obj.Alfven)           Fields{end+1} = 'Alfven';           end
-      if ~isempty(obj.Gyroradius)       Fields{end+1} = 'Gyroradius';       end
-      if ~isempty(obj.PlasmaFreq)       Fields{end+1} = 'PlasmaFreq';       end
-      if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
+        if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
+        if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
+        if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
+        if ~isempty(obj.Beta)             Fields{end+1} = 'Beta';             end
+        if ~isempty(obj.Alfven)           Fields{end+1} = 'Alfven';           end
+        if ~isempty(obj.Gyroradius)       Fields{end+1} = 'Gyroradius';       end
+        if ~isempty(obj.PlasmaFreq)       Fields{end+1} = 'PlasmaFreq';       end
+        if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
+      end
     end
+    %------------------------------------------------------------
+    function output = copyObject(input, output)
+       C = metaclass(input);
+       P = C.Properties;
+       for k = 1:length(P)
+         if ~P{k}.Dependent
+           output.(P{k}.Name) = input.(P{k}.Name);
+         end
+       end
+    end
+    %------------------------------------------------------------
   end   % Methods (hidden, protected)
 
 end     % Class
