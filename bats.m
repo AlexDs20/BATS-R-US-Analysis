@@ -41,6 +41,7 @@ classdef bats < handle
     % Vectors
     jxbx, jxby, jxbz, jxb
     Ex, Ey, Ez, E
+    rhoUx, rhoUy, rhoUz, rhoU
 
     % Scalars
     Temp, Pb, Beta, Alfven
@@ -279,6 +280,22 @@ classdef bats < handle
 
       obj.u = sqrt( obj.ux.^2 + obj.uy.^2 + obj.uz.^2 );
       obj.GlobalUnits.u = obj.GlobalUnits.ux;
+    end
+    function obj = calc_rhoU(obj)
+      if isempty(obj.ux)    obj.loadFields({'ux','uy','uz'});   end
+      if isempty(obj.rho)   obj.loadFields('rho');              end
+
+      m = 1.6726*1e-27;
+      obj.rhoUx = obj.rho.* obj.ux * 1e-3 * m;
+      obj.rhoUy = obj.rho.* obj.uy * 1e-3 * m;
+      obj.rhoUz = obj.rho.* obj.uz * 1e-3 * m;
+      obj.rhoU  = sqrt( obj.rhoUx.^2 + obj.rhoUy.^2 + obj.rhoUz.^2 );
+
+      obj.GlobalUnits.rhoUx = 'kg m^-2 s^-1';
+      obj.GlobalUnits.rhoUy = 'kg m^-2 s^-1';
+      obj.GlobalUnits.rhoUz = 'kg m^-2 s^-1';
+      obj.GlobalUnits.rhoU  = 'kg m^-2 s^-1';
+
     end
     %------------------------------------------------------------
     function obj = calc_j(obj)
