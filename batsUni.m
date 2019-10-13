@@ -128,7 +128,7 @@ classdef batsUni < bats
     end
 
     %----------------------------------------
-    %   Calculating things (Derivative based)
+    %   Calculating Derivative based things
     %----------------------------------------
     function obj = calc_vorticity(obj)
       [Vortx, Vorty, Vortz, Vort] = obj.calc_curl('u');
@@ -204,6 +204,77 @@ classdef batsUni < bats
 
     end
     %----------------------------------------
+
+    %----------------------------------------
+    %     Plotting shit
+    %----------------------------------------
+    function plot(varargin)
+
+      if find(strcmp('pcolor',varargin))
+        plotType = 1;
+      elseif find(strcmp('quiver',varargin))
+        plotType = 2;
+      elseif find(strcmp('quiver3',varargin))
+        plotType = 3;
+      elseif find(strcmp('contour',varargin))
+        plotType = 4;
+      end
+
+      if find(strcmp('variable',varargin))
+        var = varargin{ find(strcmp('variable',varargin))+1 };
+      end
+      %------------------------------
+      % To apply on all axes
+      if find(strcmp('xlim',varargin))
+        xl = varargin{ find(strcmp('xlim',varargin))+1 };
+      else
+        xl = obj.XRange;
+      end
+      if find(strcmp('ylim',varargin))
+        yl = varargin{ find(strcmp('ylim',varargin))+1 };
+      else
+        yl = obj.YRange;
+      end
+      if find(strcmp('zlim',varargin))
+        zl = varargin{ find(strcmp('zlim',varargin))+1 };
+      else
+        zl = obj.ZRange;
+      end
+      if find(strcmp('facealpha',varargin))
+        facealpha = varargin{ find(strcmp('facealpha',varargin))+1 };
+      else
+        facealpha = 1.0;
+      end
+      if find(strcmp('position',varargin))
+        position = varargin{ find(strcmp('position',varargin))+1 };
+      else
+        position = [0.126 0.11 0.7513 0.815];
+      end
+      if find(strcmp('colorposition',varargin))
+        colorposition = varargin{ find(strcmp('colorposition',varargin))+1 };
+        if colorposition = 'left'
+          colorposition = [0.08 0.1105 0.0112 0.8143];
+        elseif colorposition = 'right'
+        end
+      else
+        colorposition = [0.08 0.1105 0.0112 0.8143];
+      end
+
+      % Check if we want a new figure
+      if find(strcmp('newfigure',varargin))
+        h = figure; set(h,'Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
+        ax = axes; set(ax,'XLim',xl,'YLim',yl,'ZLim',zl,'Units','Normalized','Position',position);
+      else
+        h = gcf; set(h,'Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
+        % If we already have a fig. I want a copy of one of the axes.
+        ax = copyobj()
+        set(ax,'Visible','off','XTick',[],'YTick',[],'ZTick',[]);
+      end
+
+      if plotType = 1
+      end
+
+    end
 
   end
   %--------------------------------------------------
