@@ -14,6 +14,8 @@ classdef batsUni < bats
     Vorticityx, Vorticityy, Vorticityz, Vorticity
     GradPx, GradPy, GradPz, GradP
     GradPbx, GradPby, GradPbz, GradPb
+    DivBBx, DivBBy, DivBBz, DivBB
+    DivRhoUUx, DivRhoUUy, DivRhoUUz, DivRhoUU
 
   end
 
@@ -58,119 +60,110 @@ classdef batsUni < bats
       if isa(varargin{1},'bats') & ~isempty(obj.GlobalCellSize) ...
                   & find(strcmp('variables',varargin)) & obj.GlobalInterpolation
 
-        [x,y,z] = obj.toUniformGrid(varargin{1},obj.GlobalCellSize, var);
+        [x,y,z] = obj.toUniformGrid(varargin{1},obj.GlobalCellSize, var, ...
+                      'xrange',obj.GlobalXRange,'yrange',obj.GlobalYRange, ...
+                      'zrange',obj.GlobalZRange);
         obj.x = x;
         obj.y = y;
         obj.z = z;
       end
     end
-
     %----------------------------------------
-    %   Overloading some simple calc
+    %   Simple calculations
     %----------------------------------------
     function calc_j(obj)
-    % We can calculate the current from the B field
-    % This allows us to not have to interpolate the J field
-    % and instead only do it for B and calculate it from curlB/mu0
+      % We can calculate the current from the B field
+      % This allows us to not have to interpolate the J field
+      % and instead only do it for B and calculate it from curlB/mu0
 
-    % (nT/m) / mu0
-    % (nT/m) A^2 / (4*pi*1e-7 * N)
-    % (1e-9 * N / (A*m^2) ) A^2 / (4*pi*1e-7 * N)
-    % (1e-9 * 1 / (1*m^2) ) A^1 / (4*pi*1e-7 * 1)
-    % (1e-9 / m^2 ) A^1 / (4*pi*1e-7)
-    % (1e-9 / 4*pi*1e-7) * A/m^2
-    % (1e-3 / 4*pi*1e-7) * muA/m^2
+      % (nT/m) / mu0
+      % (nT/m) A^2 / (4*pi*1e-7 * N)
+      % (1e-9 * N / (A*m^2) ) A^2 / (4*pi*1e-7 * N)
+      % (1e-9 * 1 / (1*m^2) ) A^1 / (4*pi*1e-7 * 1)
+      % (1e-9 / m^2 ) A^1 / (4*pi*1e-7)
+      % (1e-9 / 4*pi*1e-7) * A/m^2
+      % (1e-3 / 4*pi*1e-7) * muA/m^2
 
-    mu0 = 4*pi*1e-7;
+      mu0 = 4*pi*1e-7;
 
-    [vecx,vecy,vecz,vec] = obj.calc_curl('b');
+      [vecx,vecy,vecz,vec] = obj.calc_curl('b');
 
-    obj.jx = 1e-3 * vecx / mu0;
+      obj.jx = 1e-3 * vecx / mu0;
+      obj.jy = 1e-3 * vecy / mu0;
+      obj.jz = 1e-3 * vecz / mu0;
+      obj.j = sqrt( obj.jx.^2 + obj.jy.^2 + obj.jz.^2 );
 
-    units = 'muA/m^2'
+      obj.GlobalUnits.jx = 'muA/m^2';
+      obj.GlobalUnits.jy = 'muA/m^2';
+      obj.GlobalUnits.jz = 'muA/m^2';
+      obj.GlobalUnits.j  = 'muA/m^2';
     end
     %----------------------------------------
-    %   Some additional variables
-    %----------------------------------------
-    function calc_speciesVelocity(obj)
-    % uses the expression for the bulk velocity
-    % and the current to recover the electron
-    % and ion velocities
-    %
-    %   V = (mi*Vi + me*Ve)/(mi+me)
-    %   J = e*n*(Vi-Ve);
-    %
-    %   Vi = J/(e*n) + Ve
-    %   V = (mi*(J/en + Ve) + me*Ve)/(mi+me)
-    %   V = (mi*J/en + (mi+me)*Ve)/(mi+me)
-    %   V = (mi*J/en)/(mi+me) + Ve
-    %
-    %   Ve = V - (mi*J/en)/(mi+me)
-    %   Ve = V - (mi/(mi+me))*J/en
-    %
-    %   Vi = V - (mi/(mi+me))*J/en + J/en
-    %   Vi = V + (me/(mi+me))*J/en
-    %
-    %   Ve = V - (mi/(mi+me))*J/en
-    %   Vi = V + (me/(mi+me))*J/en
-      mp = 1.6726219*1e-27;
-      me = 9.1093835*1e-31;
-      q  = 1.6021766*1e-19;
+    function obj = getData(obj,position)
+      dx = obj.x - position(1);
+      dy = obj.y - position(2);
+      dz = obj.z - position(3);
+      idxx = find( dx == min(dx) );
+      idxy = find( dy == min(dy) );
+      idxz = find( dz == min(dz) );
 
-      Vex = ux - (mp/(mp+me))*jx./(q*rho);
-      Vey = uy - (mp/(mp+me))*jy./(q*rho);
-      Vez = uz - (mp/(mp+me))*jz./(q*rho);
+      idx = intersect(idxx,intersect(idxy,idxz));
 
-      Vix = ux + (me/(mp+me))*jx./(q*rho);
-      Viy = uy + (me/(mp+me))*jy./(q*rho);
-      Viz = uz + (me/(mp+me))*jz./(q*rho);
+      [idx_x,idx_y,idx_z] = ind2sub(size(obj.x),idx);
 
+      var = obj.listNonEmptyFields;
+
+      for i = 1 : numel(var)
+        obj.(var{i}) = obj.(var{i})(idx_x,idx_y,idx_z);
+      end
     end
-
+    %----------------------------------------
+    function obj = clearField(obj,var)
+      for i = 1 : numel(var)
+        obj.(var{i}) = [];
+      end
+    end
     %----------------------------------------
     %   Calculating Derivative based things
     %----------------------------------------
-    function obj = calc_vorticity(obj)
-      [Vortx, Vorty, Vortz, Vort] = obj.calc_curl('u');
+    %----------------------------------------
+    function obj = calc_gradPb(obj)
+      [obj.GradPbx,obj.GradPby,obj.GradPbz,obj.GradPb] = ...
+                   obj.calc_grad('Pb');
 
-      obj.Vorticityx = Vortx*1e3;
-      obj.Vorticityy = Vorty*1e3;
-      obj.Vorticityz = Vortz*1e3;
-      obj.Vorticity  = Vort *1e3;
+      obj.GlobalUnits.GradPbx = 'nN/m^3';
+      obj.GlobalUnits.GradPby = 'nN/m^3';
+      obj.GlobalUnits.GradPbz = 'nN/m^3';
+      obj.GlobalUnits.GradPb  = 'nN/m^3';
+    end
+    %----------------------------------------
+    function obj = calc_gradP(obj)
+      [obj.GradPx,obj.GradPy,obj.GradPz,obj.GradP] = ...
+                   obj.calc_grad('p');
+
+      obj.GlobalUnits.GradPx = 'nN/m^3';
+      obj.GlobalUnits.GradPy = 'nN/m^3';
+      obj.GlobalUnits.GradPz = 'nN/m^3';
+      obj.GlobalUnits.GradP  = 'nN/m^3';
+    end
+    function obj = calc_vorticity(obj)
+      [vecx,vecy,vecz,vec] = obj.calc_curl('u');
+
+      obj.Vorticityx = 1e3 * vecx;
+      obj.Vorticityy = 1e3 * vecy;
+      obj.Vorticityz = 1e3 * vecz;
+      obj.Vorticity  = 1e3 * vec;
 
       obj.GlobalUnits.Vorticityx = '1/s';
       obj.GlobalUnits.Vorticityy = '1/s';
       obj.GlobalUnits.Vorticityz = '1/s';
       obj.GlobalUnits.Vorticity  = '1/s';
     end
-
-    %----------------------------------------
-    function obj = calc_gradPb(obj)
-      [obj.gradPbx,obj.gradPby,obj.gradPbz,obj.gradPb] = ...
-                   obj.calc_grad('Pb');
-
-      obj.GlobalUnits.gradPbx = 'nN/m^3';
-      obj.GlobalUnits.gradPby = 'nN/m^3';
-      obj.GlobalUnits.gradPbz = 'nN/m^3';
-      obj.GlobalUnits.gradPb  = 'nN/m^3';
-    end
-    %----------------------------------------
-    function obj = calc_gradP(obj)
-      [obj.gradPx,obj.gradPy,obj.gradPz,obj.gradP] = ...
-                   obj.calc_grad('P');
-
-      obj.GlobalUnits.gradPx = 'nN/m^3';
-      obj.GlobalUnits.gradPy = 'nN/m^3';
-      obj.GlobalUnits.gradPz = 'nN/m^3';
-      obj.GlobalUnits.gradP  = 'nN/m^3';
-    end
     %----------------------------------------
     function obj = calc_divBB(obj)
-    %   calculates divergence of a tensor:
-    %             \partial_i (field1_i field2_j)
-    %   by computing: \partial_i(field1_i) field2_j + field1_i \partial_i (field2_j)
-    %   that is:
-    %                     div(field1) field2        +     field1 dot grad(field2)
+      %   calculates the divergence term:
+      %         div(BB/mu0)
+      %   This is stored in the variable divBBx, divBBy, divBBz, divBB
 
       [vecx,vecy,vecz,vec] = obj.calc_divTensor('b','b');
       mu0 = 4*pi*1e-7;
@@ -179,31 +172,75 @@ classdef batsUni < bats
       % (1/mu0) * nT * nT /m
       % (1/(4*pi*1e-7)) * 1e-9 * nN/m^3
 
-      vecx = vecx * 1e-9 / mu0;
-      vecy = vecy * 1e-9 / mu0;
-      vecz = vecz * 1e-9 / mu0;
-      vec  = vec  * 1e-9 / mu0;
+      obj.DivBBx = vecx * 1e-9 / mu0;
+      obj.DivBBy = vecy * 1e-9 / mu0;
+      obj.DivBBz = vecz * 1e-9 / mu0;
+      obj.DivBB  = vec  * 1e-9 / mu0;
 
-      units = 'nN/m^3';
-
+      obj.GlobalUnits.DivBBx = 'nN/m^3';
+      obj.GlobalUnits.DivBBy = 'nN/m^3';
+      obj.GlobalUnits.DivBBz = 'nN/m^3';
+      obj.GlobalUnits.DivBB  = 'nN/m^3';
     end
     %----------------------------------------
     function obj = calc_divRhoUU(obj)
       [vecx,vecy,vecz,vec] = obj.calc_divTensor('rhoU','u');
 
-      % kg m-2 s-1 km s-1 m-1
-      % 1e3 kg m s-2 m-3
-      % 1e3 1e9 nN/m-3
+      %    rhoU        u       div
+      % amu cm-2 s-1  km s-1    m-1
+      % mp(kg) *1e12 m^-2 s^-2
+      % mp(kg) * 1e16 * nN/m^3
 
-      vecx = vecx * 1e12;
-      vecy = vecy * 1e12;
-      vecz = vecz * 1e12;
-      vec  = vec  * 1e12;
+      mp = 1.67262*1e-27;
 
-      units = 'nN/m^3'
+      obj.DivRhoUUx = mp * vecx * 1e16;
+      obj.DivRhoUUy = mp * vecy * 1e16;
+      obj.DivRhoUUz = mp * vecz * 1e16;
+      obj.DivRhoUU  = mp * vec  * 1e16;
 
+      obj.GlobalUnits.DivRhoUUx = 'nN/m^3';
+      obj.GlobalUnits.DivRhoUUy = 'nN/m^3';
+      obj.GlobalUnits.DivRhoUUz = 'nN/m^3';
+      obj.GlobalUnits.DivRhoUU  = 'nN/m^3';
     end
     %----------------------------------------
+    %     Reduce Domain
+    %----------------------------------------
+    function obj = reduceDomain(obj,varargin)
+    % KWARGS: 'xrange', 'yrange' and 'zrange', otherwise
+      if find(strcmp('xrange',varargin))
+        xrange = varargin{ find(strcmp('xrange',varargin))+1 };
+      else
+        xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
+      end
+      if find(strcmp('yrange',varargin))
+        yrange = varargin{ find(strcmp('yrange',varargin))+1 };
+      else
+        yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
+      end
+      if find(strcmp('zrange',varargin))
+        zrange = varargin{ find(strcmp('zrange',varargin))+1 };
+      else
+        zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
+      end
+
+      ix = find(obj.x >= xrange(1) & obj.x <= xrange(end));
+      iy = find(obj.y >= yrange(1) & obj.y <= yrange(end));
+      iz = find(obj.z >= zrange(1) & obj.z <= zrange(end));
+      indices = intersect(ix,intersect(iy,iz));
+
+      sx = numel(intersect(obj.x(ix),obj.x(ix)));
+      sy = numel(intersect(obj.y(iy),obj.y(iy)));
+      sz = numel(intersect(obj.z(iz),obj.z(iz)));
+
+      % List non empty fields
+      var = obj.listNonEmptyFields;
+
+      % Reduce elements in it.
+      for i = 1 : numel(var)
+        obj.(var{i}) = reshape(obj.(var{i})(indices),[sx, sy, sz]);
+      end
+    end
 
     %----------------------------------------
     %     Plotting shit
@@ -252,9 +289,9 @@ classdef batsUni < bats
       end
       if find(strcmp('colorposition',varargin))
         colorposition = varargin{ find(strcmp('colorposition',varargin))+1 };
-        if colorposition = 'left'
+        if colorposition == 'left'
           colorposition = [0.08 0.1105 0.0112 0.8143];
-        elseif colorposition = 'right'
+        elseif colorposition == 'right'
         end
       else
         colorposition = [0.08 0.1105 0.0112 0.8143];
@@ -271,7 +308,7 @@ classdef batsUni < bats
         set(ax,'Visible','off','XTick',[],'YTick',[],'ZTick',[]);
       end
 
-      if plotType = 1
+      if plotType == 1
       end
 
     end
@@ -290,35 +327,52 @@ classdef batsUni < bats
     %             \partial_i (field1_i field2_j)
     %   by computing: \partial_i(field1_i) field2_j + field1_i \partial_i (field2_j)
     %   that is:
-    %                     div(field1) field2        +     field1 dot grad(field2)
+    %                     div(field1) field2_j        +     field1 dot grad(field2_j)
     %
     %   Units: [field1][field2]/m
 
+
+      if ndims(obj.x)~=3
+        error('The fields must be in xyz in order to calculate the divergence...');
+      end
       field1x = [field1,'x']; field1y = [field1,'y']; field1z = [field1,'z'];
       field2x = [field2,'x']; field2y = [field2,'y']; field2z = [field2,'z'];
-
       Re = 6371.2e3;
 
-      div = divergence(obj.x,obj.y,obj.z, ...
-                  obj.(field1x),obj.(field1y),obj.(field1z));
+      x = permute(obj.x,[2 1 3]).*Re;
+      y = permute(obj.y,[2 1 3]).*Re;
+      z = permute(obj.z,[2 1 3]).*Re;
+      var1x= permute(obj.(field1x),[2 1 3]);
+      var1y= permute(obj.(field1y),[2 1 3]);
+      var1z= permute(obj.(field1z),[2 1 3]);
+      var2x= permute(obj.(field2x),[2 1 3]);
+      var2y= permute(obj.(field2y),[2 1 3]);
+      var2z= permute(obj.(field2z),[2 1 3]);
 
-      [gradxX,gradyX,gradzX] = gradient(obj.(field2x),obj.GlobalCellSize*Re);
-      [gradxY,gradyY,gradzY] = gradient(obj.(field2y),obj.GlobalCellSize*Re);
-      [gradxZ,gradyZ,gradzZ] = gradient(obj.(field2z),obj.GlobalCellSize*Re);
 
-      vecx = div .* obj.(field2x) ...
-            + obj.(field1x).*gradxX + obj.(field1y).*gradyX + obj.(field1z).*gradzX;
+      div = divergence(x,y,z,var1x,var1y,var1z);
 
-      vecy = div .* obj.(field2y) ...
-            + obj.(field1x).*gradxY + obj.(field1y).*gradyY + obj.(field1z).*gradzY;
+      [gradXx,gradXy,gradXz] = gradient(var2x,obj.GlobalCellSize*Re);
+      [gradYx,gradYy,gradYz] = gradient(var2y,obj.GlobalCellSize*Re);
+      [gradZx,gradZy,gradZz] = gradient(var2z,obj.GlobalCellSize*Re);
 
-      vecz = div .* obj.(field2z) ...
-            + obj.(field1x).*gradxZ + obj.(field1y).*gradyZ + obj.(field1z).*gradzZ;
+      vecx = div .* var2x ...
+            + var1x.*gradXx + var1y.*gradXy + var1z.*gradXz;
+
+      vecy = div .* var2y ...
+            + var1x.*gradYx + var1y.*gradYy + var1z.*gradYz;
+
+      vecz = div .* var2z ...
+            + var1x.*gradZx + var1y.*gradZy + var1z.*gradZz;
 
       vec = sqrt(vecx.^2 + vecy.^2 + vecz.^2);
+
+      vecx = permute(vecx,[2 1 3]);
+      vecy = permute(vecy,[2 1 3]);
+      vecz = permute(vecz,[2 1 3]);
+      vec  = permute(vec ,[2 1 3]);
     end
     %--------------------------------------------------
-
     function [vecx, vecy, vecz, vec] = calc_grad(obj,var)
     % Output Units: [inputs]/m
       Re = 6371.2e3;
@@ -327,8 +381,7 @@ classdef batsUni < bats
       vec  = sqrt(vecx.^2 + vecy.^2 + vecz.^2);
     end
     %--------------------------------------------------
-
-    function [curlx, curly, curlz, curl] = calc_curl(obj,var)
+    function [curlx, curly, curlz, curlMag] = calc_curl(obj,var)
     % Output: Units: [inputs/m];
       varx = [var,'x'];
       vary = [var,'y'];
@@ -348,16 +401,16 @@ classdef batsUni < bats
         x = permute(obj.x,[dim1 dim2]);
         y = permute(obj.y,[dim1 dim2]);
         z = permute(obj.z,[dim1 dim2]);
-        varx= permute(obj.varx,[dim1 dim2]);
-        vary= permute(obj.vary,[dim1 dim2]);
-        varz= permute(obj.varz,[dim1 dim2]);
+        varx= permute(obj.(varx),[dim1 dim2]);
+        vary= permute(obj.(vary),[dim1 dim2]);
+        varz= permute(obj.(varz),[dim1 dim2]);
       elseif ndims(obj.x) == 3
         x = permute(obj.x,[2 1 3]);
         y = permute(obj.y,[2 1 3]);
         z = permute(obj.z,[2 1 3]);
-        varx= permute(obj.varx,[2 1 3]);
-        vary= permute(obj.vary,[2 1 3]);
-        varz= permute(obj.varz,[2 1 3]);
+        varx= permute(obj.(varx),[2 1 3]);
+        vary= permute(obj.(vary),[2 1 3]);
+        varz= permute(obj.(varz),[2 1 3]);
       end
 
       [curlx,curly,curlz,~] = curl(x,y,z,varx,vary,varz);
@@ -376,7 +429,7 @@ classdef batsUni < bats
       curlx = curlx/Re;
       curly = curly/Re;
       curlz = curlz/Re;
-      curl  = sqrt( curlx.^2 + curly.^2 + curlz.^2 );
+      curlMag  = sqrt( curlx.^2 + curly.^2 + curlz.^2 );
     end
     %--------------------------------------------------
   end
@@ -393,24 +446,37 @@ classdef batsUni < bats
       Global.ZRange = obj.GlobalZRange;
       Global.Interpolation = obj.GlobalInterpolation;
     end
+  %--------------------------------------------------
     function Derived = getDerived(obj)
       Derived = getDerived@bats(obj);
 
-      Derived.Vorticity  = obj.Vorticity;
       Derived.Vorticityx = obj.Vorticityx;
       Derived.Vorticityy = obj.Vorticityy;
       Derived.Vorticityz = obj.Vorticityz;
+      Derived.Vorticity  = obj.Vorticity;
 
-      Derived.GradP  = obj.GradP;
       Derived.GradPx = obj.GradPx;
       Derived.GradPy = obj.GradPy;
       Derived.GradPz = obj.GradPz;
+      Derived.GradP  = obj.GradP;
 
-      Derived.GradPb  = obj.GradPb;
       Derived.GradPbx = obj.GradPbx;
       Derived.GradPby = obj.GradPby;
       Derived.GradPbz = obj.GradPbz;
+      Derived.GradPb  = obj.GradPb;
+
+      Derived.DivBBx = obj.DivBBx;
+      Derived.DivBBy = obj.DivBBy;
+      Derived.DivBBz = obj.DivBBz;
+      Derived.DivBB  = obj.DivBB;
+
+      Derived.DivRhoUUx = obj.DivRhoUUx;
+      Derived.DivRhoUUy = obj.DivRhoUUy;
+      Derived.DivRhoUUz = obj.DivRhoUUz;
+      Derived.DivRhoUU  = obj.DivRhoUU;
+
     end
+  %--------------------------------------------------
   end
 
 end

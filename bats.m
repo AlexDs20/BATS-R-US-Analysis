@@ -43,9 +43,13 @@ classdef bats < handle
     Ex, Ey, Ez, E
     rhoUx, rhoUy, rhoUz, rhoU
 
+    % Velocities
+    Vix, Viy, Viz, Vi
+    Vex, Vey, Vez, Ve
+
     % Scalars
-    Temp, Pb, Beta, Alfven
-    Vth, Gyroradius, PlasmaFreq, InertialLength
+    Pb, Vth, Temp, Beta, Alfven
+    Gyroradius, PlasmaFreq, InertialLength
 
     %------------------------------
     %   Internal Variables
@@ -58,21 +62,20 @@ classdef bats < handle
 %     METHODS
   methods
     function obj = bats(varargin)
-    % function obj = bats(varargin)
-    %
-    % INPUT:  If no inputs => returns empty object
-    %   KWARGS:
-    %         'file': string: '/path/to/cdf/file.cdf'
-    %         'variables', var : with var a cell array of strings with the name of the variables to load.
-    %                            If not specified, load all variables
-    %                            {'x','y','z','bx','by','bz','b1x','b1y','b1z',
-    %                             'ux','uy','uz','jx','jy','jz','rho','p','e'}
-    % METHODS:
-    %       toUniformGrid()
-    %       calc_
-    %
-    % USE:
-
+      % function obj = bats(varargin)
+      %
+      % INPUT:  If no inputs => returns empty object
+      %   KWARGS:
+      %         'file': string: '/path/to/cdf/file.cdf'
+      %         'variables', var : with var a cell array of strings with the name of the variables to load.
+      %                            If not specified, load all variables
+      %                            {'x','y','z','bx','by','bz','b1x','b1y','b1z',
+      %                             'ux','uy','uz','jx','jy','jz','rho','p','e'}
+      % METHODS:
+      %       toUniformGrid()
+      %       calc_
+      %
+      % USE:
       if nargin == 0
         return
       elseif mod(nargin,2) == 1
@@ -184,22 +187,22 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function [xmesh,ymesh,zmesh] = toUniformGrid(obj,obj1,cellSize,var,varargin)
-    % function [xmesh,ymesh,zmesh] = toUniformGrid(obj,cellSize,var,varargin)
-    %
-    %   INPUT:
-    %           obj = object that will contain the uniform grid
-    %           obj1 = object from which it will take the data
-    %           cellSize = in R units
-    %           var = cellarray of variables e.g. {'bx','by'}
-    %     varargin:
-    %           'xrange': giving the range of values for the interp
-    %           'yrange': giving the range of values for the interp
-    %           'zrange': giving the range of values for the interp
-    %
-    %   OUTPUT:
-    %           xmesh
-    %           ymesh
-    %           zmesh
+      % function [xmesh,ymesh,zmesh] = toUniformGrid(obj,cellSize,var,varargin)
+      %
+      %   INPUT:
+      %           obj = object that will contain the uniform grid
+      %           obj1 = object from which it will take the data
+      %           cellSize = in R units
+      %           var = cellarray of variables e.g. {'bx','by'}
+      %     varargin:
+      %           'xrange': giving the range of values for the interp
+      %           'yrange': giving the range of values for the interp
+      %           'zrange': giving the range of values for the interp
+      %
+      %   OUTPUT:
+      %           xmesh
+      %           ymesh
+      %           zmesh
 
       % Warning
       warning('This may take a long time. Make sure you have enough memory!');
@@ -257,7 +260,6 @@ classdef bats < handle
         obj.(var{i}) = single(F(double(xmesh), double(ymesh), double(zmesh)));
       end
     end
-
     %----------------------------------------
     %   Calc functions.
     %------------------------------------------------------------
@@ -281,21 +283,22 @@ classdef bats < handle
       obj.u = sqrt( obj.ux.^2 + obj.uy.^2 + obj.uz.^2 );
       obj.GlobalUnits.u = obj.GlobalUnits.ux;
     end
+    %------------------------------------------------------------
     function obj = calc_rhoU(obj)
       if isempty(obj.ux)    obj.loadFields({'ux','uy','uz'});   end
       if isempty(obj.rho)   obj.loadFields('rho');              end
 
-      m = 1.6726*1e-27;
-      obj.rhoUx = obj.rho.* obj.ux * 1e-3 * m;
-      obj.rhoUy = obj.rho.* obj.uy * 1e-3 * m;
-      obj.rhoUz = obj.rho.* obj.uz * 1e-3 * m;
+      %m = 1.6726*1e-27;
+      m = 1;
+      obj.rhoUx = obj.rho.* obj.ux * 1e5 * m;
+      obj.rhoUy = obj.rho.* obj.uy * 1e5 * m;
+      obj.rhoUz = obj.rho.* obj.uz * 1e5 * m;
       obj.rhoU  = sqrt( obj.rhoUx.^2 + obj.rhoUy.^2 + obj.rhoUz.^2 );
 
-      obj.GlobalUnits.rhoUx = 'kg m^-2 s^-1';
-      obj.GlobalUnits.rhoUy = 'kg m^-2 s^-1';
-      obj.GlobalUnits.rhoUz = 'kg m^-2 s^-1';
-      obj.GlobalUnits.rhoU  = 'kg m^-2 s^-1';
-
+      obj.GlobalUnits.rhoUx = 'amu cm^-2 s^-1';
+      obj.GlobalUnits.rhoUy = 'amu cm^-2 s^-1';
+      obj.GlobalUnits.rhoUz = 'amu cm^-2 s^-1';
+      obj.GlobalUnits.rhoU  = 'amu cm^-2 s^-1';
     end
     %------------------------------------------------------------
     function obj = calc_j(obj)
@@ -306,9 +309,9 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_jxb(obj)
-    % units:  [j]: muA/m^2
-    %         [b]: nT
-    %         [jxb]: nN/m^3
+      % units:  [j]: muA/m^2
+      %         [b]: nT
+      %         [jxb]: nN/m^3
       if (isempty(obj.jx)|isempty(obj.ux))
         obj.loadFields({'jx','jy','jz','ux','uy','uz'});
       end
@@ -325,9 +328,9 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_E(obj)
-    % units:  [u]: km/s
-    %         [b]: nT
-    %         [E]: mV/m
+      % units:  [u]: km/s
+      %         [b]: nT
+      %         [E]: mV/m
       if (isempty(obj.bx)|isempty(obj.ux))
         obj.loadFields({'bx','by','bz','ux','uy','uz'});
       end
@@ -344,19 +347,19 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_temp(obj)
-    % Calculated through P = nkT
-    % it uses rho for n, it is fine as long as its only H+
+      % Calculated through P = nkT
+      % it uses rho for n, it is fine as long as its only H+
       if (isempty(obj.p)|isempty(obj.rho))
         obj.loadFields({'p','rho'});
       end
 
-      eV = 6241.50935;    % nPa*cm^3 to eV
-      obj.Temp = eV*obj.p./obj.rho;
+      eV = 1.602176634*1e-4;    % Includes the 1e15
+      obj.Temp = obj.p./(obj.rho*eV);
       obj.GlobalUnits.Temp = 'eV';
     end
     %------------------------------------------------------------
     function obj = calc_pb(obj)
-    % Calculates the magnetic pressure
+      % Calculates the magnetic pressure
       if isempty(obj.b) obj.calc_b; end
 
       mu0 = 4*pi*1e-7;
@@ -365,7 +368,7 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_beta(obj)
-    % Calculates beta factor
+      % Calculates beta factor
       if isempty(obj.p)   obj.loadFields('p');  end
       if isempty(obj.Pb)  obj.calc_pb;          end
 
@@ -374,7 +377,7 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_alfven(obj)
-    % Only works for pure protons
+      % Only works for pure protons
       if isempty(obj.b)     obj.calc_b;               end
       if isempty(obj.rho)   obj.loadFields('rho');  end
 
@@ -386,24 +389,27 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_vth(obj)
-    % Compute it without the temperature
-    % vth = sqrt(2*p/(n*m))   with p: pressure, n: number density, m: mass
+      % Compute it without the temperature
+      % vth = sqrt(2*p/(n*m))   with p: pressure, n: number density, m: mass
       if isempty(obj.Temp) obj.calc_temp; end
 
-      m = 1.6276e-27;
+      m =  1.6726219;
+      eV = 1.6021766;    % Includes the 1e15
+      eVm = 1e8 * eV/m;
 
-      obj.Vth = sqrt( 2*1.6022*1e-19 * obj.Temp/m ) * 1e-3;
+      obj.Vth = sqrt( 2* eVm * obj.Temp ) * 1e-3;
       obj.GlobalUnits.Vth = 'km/s';
     end
     %------------------------------------------------------------
     function obj = calc_gyroradius(obj)
       if isempty(obj.u)     obj.calc_u;     end
       if isempty(obj.Vth)   obj.calc_vth;   end
+      if isempty(obj.b)     obj.calc_b;   end
 
       v = sqrt(obj.u.^2 + obj.Vth.^2)*1000;
       b = obj.b*1e-9;
-      m = 1.6276e-27;
-      q = 1.6022e-19;
+      m = 1.6276219e-27;
+      q = 1.6021766e-19;
       R = 6371.2e3;
 
       obj.Gyroradius = m*v./(q*b*R);
@@ -411,14 +417,16 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_plasmafreq(obj)
+      % Ion plasma frequency
+      % To get the electron, just change the mass (in kg)
       if isempty(obj.rho)   obj.loadFields('rho');  end
 
       m = 1.6276e-27;
-      %n = (obj.rho/m)*1e6;
       n = (obj.rho)*1e6;
+      eps0 = 8.8542e-12;
       q = 1.6022e-19;
 
-      obj.PlasmaFreq = sqrt(4*pi*n*q^2/m);
+      obj.PlasmaFreq = sqrt(n*q^2/(m*eps0));
       obj.GlobalUnits.PlasmaFreq = 'rad/s';
     end
     %------------------------------------------------------------
@@ -426,16 +434,64 @@ classdef bats < handle
       if isempty(obj.Alfven)      obj.calc_alfven;      end
       if isempty(obj.PlasmaFreq)  obj.calc_plasmafreq;  end
 
-      R = 6371.2e3;
+      R = 6371.2;
 
       obj.InertialLength = obj.Alfven./(obj.PlasmaFreq*R);
       obj.GlobalUnits.InertialLength = 'Re';
     end
     %------------------------------------------------------------
+    function calc_electronVelocity(obj)
+      % uses the expression for the bulk velocity
+      % and the current to recover the electron
+      % and ion velocities
+      %
+      %   V = (mi*Vi + me*Ve)/(mi+me)
+      %   J = e*n*(Vi-Ve);
+      %
+      %   Ve = V - (mi/(mi+me))*J/en
+      %   Vi = V + (me/(mi+me))*J/en
+      if ( isempty(obj.rho) | isempty(obj.jx) | isempty(obj.ux) )
+        obj.loadFields({'rho','jx','jy','jz','ux','uy','uz'});
+      end
+      mp = 1.6726219*1e-27;
+      me = 9.1093835*1e-31;
+      q  = 1.6021766*1e-19;
+
+      obj.Vex = obj.ux - 1e-15 * (mp/(mp+me))*obj.jx./(q*obj.rho);
+      obj.Vey = obj.uy - 1e-15 * (mp/(mp+me))*obj.jy./(q*obj.rho);
+      obj.Vez = obj.uz - 1e-15 * (mp/(mp+me))*obj.jz./(q*obj.rho);
+      obj.Ve = sqrt( obj.Vex.^2 + obj.Vey.^2 + obj.Vez.^2 );
+    end
+    %------------------------------------------------------------
+    function calc_protonVelocity(obj)
+      % uses the expression for the bulk velocity
+      % and the current to recover the electron
+      % and ion velocities
+      %
+      %   V = (mi*Vi + me*Ve)/(mi+me)
+      %   J = e*n*(Vi-Ve);
+      %
+      %   Ve = V - (mi/(mi+me))*J/en
+      %   Vi = V + (me/(mi+me))*J/en
+      if ( isempty(obj.rho) | isempty(obj.jx) | isempty(obj.ux) )
+        obj.loadFields({'rho','jx','jy','jz','ux','uy','uz'});
+      end
+      mp = 1.6726219*1e-27;
+      me = 9.1093835*1e-31;
+      q  = 1.6021766*1e-19;
+
+      obj.Vix = obj.ux + 1e-15 * (me/(mp+me))*obj.jx./(q*obj.rho);
+      obj.Viy = obj.uy + 1e-15 * (me/(mp+me))*obj.jy./(q*obj.rho);
+      obj.Viz = obj.uz + 1e-15 * (me/(mp+me))*obj.jz./(q*obj.rho);
+      obj.Vi = sqrt( obj.Vix.^2 + obj.Viy.^2 + obj.Viz.^2 );
+    end
+    %------------------------------------------------------------
+    %------------------------------------------------------------
     function obj = calc_all(obj)
       obj.calc_b;
       obj.calc_b1;
       obj.calc_u;
+      obj.calc_rhoU;
       obj.calc_j;
       obj.calc_jxb;
       obj.calc_E;
@@ -447,9 +503,31 @@ classdef bats < handle
       obj.calc_gyroradius;
       obj.calc_plasmafreq;
       obj.calc_inertiallength;
+      obj.calc_electronVelocity;
+      obj.calc_protonVelocity;
     end
     %------------------------------------------------------------
 
+    %------------------------------------------------------------
+    %   Return Data
+    function obj = getData(obj,position)
+      [~,idx_x] = min(abs( obj.x - position(1) ));
+      [~,idx_y] = min(abs( obj.y - position(2) ));
+      [~,idx_z] = min(abs( obj.z - position(3) ));
+
+      idx = intersect(idx_x,intersect(idx_y,idx_z));
+
+      var = obj.listNonEmptyFields;
+
+      for i = 1 : numel(var)
+        obj.(var{i}) = obj.(var{i})(idx);
+      end
+    end
+    function obj = clearField(obj,var)
+      for i = 1 : numel(var)
+        obj.(var{i}) = [];
+      end
+    end
 
     %--------------------------------------------------
     %         REDUCE DOMAIN METHODS
@@ -490,15 +568,19 @@ classdef bats < handle
       Output.bx = obj.bx;
       Output.by = obj.by;
       Output.bz = obj.bz;
+      Output.b  = obj.b;
       Output.b1x = obj.b1x;
       Output.b1y = obj.b1y;
       Output.b1z = obj.b1z;
+      Output.b1  = obj.b1;
       Output.ux = obj.ux;
       Output.uy = obj.uy;
       Output.uz = obj.uz;
+      Output.u  = obj.u;
       Output.jx = obj.jx;
       Output.jy = obj.jy;
       Output.jz = obj.jz;
+      Output.j  = obj.j;
       Output.rho = obj.rho;
       Output.p = obj.p;
       Output.e = obj.e;
@@ -512,11 +594,23 @@ classdef bats < handle
       Derived.jxbx = obj.jxbx;
       Derived.jxby = obj.jxby;
       Derived.jxbz = obj.jxbz;
-      Derived.jxb = obj.jxbz;
+      Derived.jxb = obj.jxb;
       Derived.Ex = obj.Ex;
       Derived.Ey = obj.Ey;
       Derived.Ez = obj.Ez;
-      Derived.E = obj.E;
+      Derived.E  = obj.E;
+      Derived.rhoUx = obj.rhoUx;
+      Derived.rhoUy = obj.rhoUy;
+      Derived.rhoUz = obj.rhoUz;
+      Derived.rhoU  = obj.rhoU;
+      Derived.Vix = obj.Vix;
+      Derived.Viy = obj.Viy;
+      Derived.Viz = obj.Viz;
+      Derived.Vi  = obj.Vi;
+      Derived.Vex = obj.Vex;
+      Derived.Vey = obj.Vey;
+      Derived.Vez = obj.Vez;
+      Derived.Ve  = obj.Ve;
       Derived.Temp = obj.Temp;
       Derived.Pb = obj.Pb;
       Derived.Beta = obj.Beta;
@@ -597,6 +691,11 @@ classdef bats < handle
         if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
         if ~isempty(obj.E)    Fields{end+1} = 'E';      end
 
+        if ~isempty(obj.rhoUx) Fields{end+1} = 'rhoUx';   end
+        if ~isempty(obj.rhoUy) Fields{end+1} = 'rhoUy';   end
+        if ~isempty(obj.rhoUz) Fields{end+1} = 'rhoUz';   end
+        if ~isempty(obj.rhoU)  Fields{end+1} = 'rhoU';    end
+
         if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
         if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
         if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
@@ -606,6 +705,7 @@ classdef bats < handle
         if ~isempty(obj.PlasmaFreq)       Fields{end+1} = 'PlasmaFreq';       end
         if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
       end
+    %------------------------------------------------------------
     end
     %------------------------------------------------------------
     function output = copyObject(input, output)
