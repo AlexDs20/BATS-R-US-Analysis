@@ -207,7 +207,7 @@ classdef batsUni < bats
     %     Reduce Domain
     %----------------------------------------
     function obj = reduceDomain(obj,varargin)
-    % KWARGS: 'xrange', 'yrange' and 'zrange', otherwise
+      % KWARGS: 'xrange', 'yrange' and 'zrange', otherwise
       if find(strcmp('xrange',varargin))
         xrange = varargin{ find(strcmp('xrange',varargin))+1 };
       else
@@ -245,74 +245,143 @@ classdef batsUni < bats
     %----------------------------------------
     %     Plotting shit
     %----------------------------------------
-    function plot(varargin)
+    function plot(obj,varargin)
+      %
+      % INPUTS:
+      %       GLOBALS:
+      %         - 'slice', 'quiver', 'contour', 'stream'
+      %         - 'variable', value
+      %         - 'xlim', value ([min max])
+      %         - 'ylim', value ([min max])
+      %         - 'zlim', value ([min max])
+      %         - 'position', value ([x0 y0 xsize ysize]) (in Normalized units)
+      %         - 'color', colorName    : a colormap or a [r g b] value
+      %
+      %       Slice and Quiver
+      %         - 'alpha', value
+      %         - 'colorposition', value ('left' or 'right')
+      %         - 'colorrange', value ([min max])
+      %
+      %       Slice and Contour:
+      %         - 'xslice', 'yslice', 'zslice', value (in Re)
+      %
+      %       Quiver and Contour:
+      %         - 'xrange', 'yrange', 'zrange', value ([min max])
+      %
+      %       Contour and Stream:
+      %         - 'LineWidth'
+      %
+      %       Contour:
+      %         - 'level'
+      %
+      %       Stream:
+      %         - 'start'
 
-      if find(strcmp('pcolor',varargin))
-        plotType = 1;
-      elseif find(strcmp('quiver',varargin))
-        plotType = 2;
-      elseif find(strcmp('quiver3',varargin))
-        plotType = 3;
-      elseif find(strcmp('contour',varargin))
-        plotType = 4;
-      end
+      %----------------------------------------
+      %     TREAT INPUT
 
-      if find(strcmp('variable',varargin))
-        var = varargin{ find(strcmp('variable',varargin))+1 };
-      end
+      [plotType, variable, ...                   % GENERAL
+       xl, yl, zl, position, colorposition, ...
+       colorName, alpha, colorrange, ...         % Several Types
+       xslice, yslice, zslice, ...               % Slice
+       qIndices,  ...                         % Quiver
+       contourLevel, LineWidth, ...             % Contour
+       start ...                                % Stream
+       ] ...
+        = obj.setInputValues(varargin(:));
+
       %------------------------------
       % To apply on all axes
-      if find(strcmp('xlim',varargin))
-        xl = varargin{ find(strcmp('xlim',varargin))+1 };
-      else
-        xl = obj.XRange;
-      end
-      if find(strcmp('ylim',varargin))
-        yl = varargin{ find(strcmp('ylim',varargin))+1 };
-      else
-        yl = obj.YRange;
-      end
-      if find(strcmp('zlim',varargin))
-        zl = varargin{ find(strcmp('zlim',varargin))+1 };
-      else
-        zl = obj.ZRange;
-      end
-      if find(strcmp('facealpha',varargin))
-        facealpha = varargin{ find(strcmp('facealpha',varargin))+1 };
-      else
-        facealpha = 1.0;
-      end
-      if find(strcmp('position',varargin))
-        position = varargin{ find(strcmp('position',varargin))+1 };
-      else
-        position = [0.126 0.11 0.7513 0.815];
-      end
-      if find(strcmp('colorposition',varargin))
-        colorposition = varargin{ find(strcmp('colorposition',varargin))+1 };
-        if colorposition == 'left'
-          colorposition = [0.08 0.1105 0.0112 0.8143];
-        elseif colorposition == 'right'
-        end
-      else
-        colorposition = [0.08 0.1105 0.0112 0.8143];
-      end
 
       % Check if we want a new figure
       if find(strcmp('newfigure',varargin))
         h = figure; set(h,'Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
-        ax = axes; set(ax,'XLim',xl,'YLim',yl,'ZLim',zl,'Units','Normalized','Position',position);
+        visible = 'on';
+        ax = axes;
       else
-        h = gcf; set(h,'Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
-        % If we already have a fig. I want a copy of one of the axes.
-        ax = copyobj()
-        set(ax,'Visible','off','XTick',[],'YTick',[],'ZTick',[]);
+        h = gcf;
+        visible = 'off';
+        ax_prev = findall(h,'type','axes');
+        % Create a new axes, copy of the previous one
+        ax = copyobj(ax_prev(1),h);
       end
+        % GET ALL INFO OF AXES
 
       if plotType == 1
+        [x,y,z] = meshgrid(unique(obj.x),unique(obj.y),unique(obj.z));
+        field = permute(obj.(variable),[2 1 3]);
+
+        hp = slice( ax, x,y,z, field, single(xslice),single(yslice),single(zslice) );
+        set(hp, ...
+            'EdgeColor', 'none', ...
+            'FaceAlpha', alpha ...
+            );
+        colormap(ax,colorName);
+        cb = colorbar(ax);
+        cl = [variable,' [',obj.GlobalUnits.(variable),']'];
+
+      elseif plotType == 2
+        x = obj.x(qIndices);
+        y = obj.y(qIndices);
+        z = obj.z(qIndices);
+        fieldx = obj.([variable,'x'])(qIndices);
+        fieldy = obj.([variable,'y'])(qIndices);
+        fieldz = obj.([variable,'z'])(qIndices);
+
+        hp = quiver3(ax, x,y,z, fieldx,fieldy,fieldz );
+
+        % Colors
+        SetQuiverColor(hp,colormap(ax,colorName), ...
+                        'range', colorrange, ...
+                        'mags',  sqrt(fieldx.^2+fieldy.^2+fieldz.^2) );
+        cb = colorbar(ax);
+        cl = [variable,' [',obj.GlobalUnits.([variable,'x']),']'];
+
+        % SetLength?
+      elseif plotType == 3
+        [x,y,z] = meshgrid(unique(obj.x),unique(obj.y),unique(obj.z));
+        field = permute(obj.(variable),[2 1 3]);
+        hp = contourslice(ax, x,y,z, field, single(xslice),single(yslice),single(zslice), ...
+                          [contourLevel contourLevel]);
+        colormap(ax,colorName)
+        set(hp(:),'LineWidth',LineWidth);
+
+        cb = [];
+        cl = [];
+      elseif plotType == 4
+        [x,y,z] = meshgrid( double(unique(obj.x)),double(unique(obj.y)),double(unique(obj.z)));
+        fieldx = double(permute(obj.([variable,'x']),[2 1 3]));
+        fieldy = double(permute(obj.([variable,'y']),[2 1 3]));
+        fieldz = double(permute(obj.([variable,'z']),[2 1 3]));
+
+        hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
+                                start(:,1), start(:,2), start(:,3)) );
+
+        hp2= streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
+                                start(:,1), start(:,2), start(:,3)) );
+
+        set(hp,'color',colorName,'LineWidth',LineWidth);
+        set(hp2,'color',colorName,'LineWidth',LineWidth);
+
+        cb = [];
+        cl = [];
+      else
+        cb = []; cl = [];
       end
 
-    end
+      obj.setProperties(ax,cb,xl,yl,zl,position,visible, ...
+              cl,colorposition,colorrange);
 
+      if (plotType == 1 | plotType == 2 | plotType == 3) ...
+           & isempty(find(strcmp('newfigure',varargin)))
+        % Linkaxes:
+        Link = linkprop([ax; ax_prev],{'CameraUpVector', 'CameraPosition', 'CameraTarget', 'XLim', 'YLim', 'ZLim'});
+        setappdata(gcf, 'StoreTheLink', Link);
+
+        %scopy = copyobj(s,ax_prev);
+        %delete(s);
+      end
+    end
   end
   %--------------------------------------------------
 
@@ -323,14 +392,13 @@ classdef batsUni < bats
     %       FOR DERIVATIVE
     %--------------------------------------------------
     function [vecx, vecy, vecz, vec] = calc_divTensor(obj,field1,field2)
-    %   calculates divergence of a tensor:
-    %             \partial_i (field1_i field2_j)
-    %   by computing: \partial_i(field1_i) field2_j + field1_i \partial_i (field2_j)
-    %   that is:
-    %                     div(field1) field2_j        +     field1 dot grad(field2_j)
-    %
-    %   Units: [field1][field2]/m
-
+      %   calculates divergence of a tensor:
+      %             \partial_i (field1_i field2_j)
+      %   by computing: \partial_i(field1_i) field2_j + field1_i \partial_i (field2_j)
+      %   that is:
+      %                     div(field1) field2_j        +     field1 dot grad(field2_j)
+      %
+      %   Units: [field1][field2]/m
 
       if ndims(obj.x)~=3
         error('The fields must be in xyz in order to calculate the divergence...');
@@ -432,6 +500,222 @@ classdef batsUni < bats
       curlMag  = sqrt( curlx.^2 + curly.^2 + curlz.^2 );
     end
     %--------------------------------------------------
+    %     Plot stuff
+    %--------------------------------------------------
+    function [plotType, variable, ...                   % GENERAL
+              xl, yl, zl, position, colorposition, ...
+              colorName, alpha, colorrange, ...         % Several Types
+              xslice, yslice, zslice, ...               % Slice
+              qIndices, ...                             % Quiver
+              contourLevel, LineWidth, ...              % Contour
+              start ...                                 % Stream
+              ] ...
+            = setInputValues(obj,var)
+
+      %----------------------------------------
+      %           GENERAL
+      %----------------------------------------
+        if find(strcmp('slice',var))
+          plotType = 1;
+        elseif find(strcmp('quiver',var))
+          plotType = 2;
+        elseif find(strcmp('contour',var))
+          plotType = 3;
+        elseif find(strcmp('stream',var))
+          plotType = 4;
+        end
+
+        if find(strcmp('variable',var))
+          variable = var{ find(strcmp('variable',var))+1 };
+        end
+
+
+        if find(strcmp('xlim',var))
+          xl = var{ find(strcmp('xlim',var))+1 };
+        else
+          xl = obj.GlobalXRange;
+        end
+        if find(strcmp('ylim',var))
+          yl = var{ find(strcmp('ylim',var))+1 };
+        else
+          yl = obj.GlobalYRange;
+        end
+        if find(strcmp('zlim',var))
+          zl = var{ find(strcmp('zlim',var))+1 };
+        else
+          zl = obj.GlobalZRange;
+        end
+
+        if find(strcmp('position',var))
+          position = var{ find(strcmp('position',var))+1 };
+        else
+          position = [0.126 0.11 0.7513 0.815];
+        end
+
+      %----------------------------------------
+      %   May be common to different plots
+      %----------------------------------------
+        if find(strcmp('alpha',var))
+          alpha = var{ find(strcmp('alpha',var))+1 };
+        else
+          alpha = 1;
+        end
+
+        if find(strcmp('color',var))
+          colorName = var{ find(strcmp('color',var))+1 };
+        else
+          if (plotType == 1 | plotType == 2)
+            colorName = 'parula';
+          elseif plotType == 3
+            colorName = [1 0 1];
+          elseif plotType == 4
+            colorName = [0.7, 0.7, 0.7];
+          end
+        end
+
+      %----------------------------------------
+      %       Slice and Quiver
+      %----------------------------------------
+        if find(strcmp('colorrange',var))
+          colorrange = var{ find(strcmp('colorrange',var))+1 };
+        else
+          if plotType == 1
+            colorrange = [min(obj.(variable),[],'all') max(obj.(variable),[],'all')];
+          elseif plotType == 2
+            mag = sqrt( obj.([variable,'x']).^2 + obj.([variable,'y']).^2 + obj.([variable,'z']).^2 );
+            colorrange = [min(mag,[],'all') max(mag,[],'all')];
+          else
+            colorrange = [];
+          end
+        end
+
+        if find(strcmp('colorposition',var))
+          colorposition = var{ find(strcmp('colorposition',var))+1 };
+          if ischar(colorposition) & strcmp(colorposition,'left')
+            colorposition = [0.07 0.1105 0.0112 0.8143];
+          elseif ischar(colorposition) & strcmp(colorposition,'right')
+            colorposition = [0.92 0.1105 0.0112 0.8143];
+          end
+        else
+          colorposition = [0.07 0.1105 0.0112 0.8143];
+        end
+      %----------------------------------------
+      %       Slice and Contour
+      %----------------------------------------
+        if plotType == 1 | plotType == 3
+          if find(strcmp('xslice',var)), xslice = var{ find(strcmp('xslice',var))+1 };
+          else, xslice = [];
+          end
+          if find(strcmp('yslice',var)), yslice = var{ find(strcmp('yslice',var))+1 };
+          else, yslice = [];
+          end
+          if find(strcmp('zslice',var)), zslice = var{ find(strcmp('zslice',var))+1 };
+          else, zslice = [];
+          end
+        else
+          xslice = [];
+          yslice = [];
+          zslice = [];
+        end
+      %----------------------------------------
+      %      Quiver and Contour
+      %----------------------------------------
+        if (plotType == 2 | plotType == 3)
+          % Domain
+          if find(strcmp('xrange',var)), xrange = var{ find(strcmp('xrange',var))+1 };
+          else, xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
+          end
+          if find(strcmp('yrange',var)), yrange = var{ find(strcmp('yrange',var))+1 };
+          else, yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
+          end
+          if find(strcmp('zrange',var)), zrange = var{ find(strcmp('zrange',var))+1 };
+          else, zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
+          end
+          qIndices = obj.domainIndex('xrange',xrange,'yrange',yrange,'zrange',zrange);
+        else
+          qIndices = [];
+        end
+      %----------------------------------------
+      %      Contour and Stream
+      %----------------------------------------
+        if (plotType == 3 | plotType == 4)
+          if find(strcmp('linewidth',var)), LineWidth = var{ find(strcmp('linewidth',var))+1 };
+          else, LineWidth = [];
+          end
+        else
+          LineWidth = [];
+        end
+      %----------------------------------------
+      %      Contour
+      %----------------------------------------
+        if plotType == 3
+          if find(strcmp('level',var)), contourLevel = var{ find(strcmp('level',var))+1 };
+          else, contourLevel = [];
+          end
+        else, contourLevel = [];
+        end
+      %----------------------------------------
+      %      Contour
+      %----------------------------------------
+        if plotType == 4
+          if find(strcmp('start',var)), start = var{ find(strcmp('start',var))+1 };
+          else, start = [-20 0 0];
+          end
+        else, start = [];
+        end
+    end
+    %--------------------------------------------------
+    function setProperties(obj,ax,cb, ...
+              xl, yl, zl, position, ...
+              visible, ...
+              cl,colorposition,colorrange)
+      set(ax, ...
+          'XLim', xl, 'YLim', yl, 'ZLim', zl, ...
+          'Units','Normalized', ...
+          'Position', position, ...
+          'Visible', visible ...
+          );
+
+      % Labels
+      xlabel(ax, ['X [', obj.GlobalUnits.x,']'] );
+      ylabel(ax, ['Y [', obj.GlobalUnits.y,']'] );
+      zlabel(ax, ['Z [', obj.GlobalUnits.z,']'] );
+
+      % Colorbar stuff
+      if ~isempty(cb)
+        set(cb, ...
+            'Position',colorposition ...
+            );
+        ylabel(cb,cl);
+        caxis(ax,colorrange)
+      end
+      %%POSITION
+    end
+    %--------------------------------------------------
+    function indices = domainIndex(obj,varargin)
+      % KWARGS: 'xrange', 'yrange' and 'zrange', otherwise
+      if find(strcmp('xrange',varargin))
+        xrange = varargin{ find(strcmp('xrange',varargin))+1 };
+      else
+        xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
+      end
+      if find(strcmp('yrange',varargin))
+        yrange = varargin{ find(strcmp('yrange',varargin))+1 };
+      else
+        yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
+      end
+      if find(strcmp('zrange',varargin))
+        zrange = varargin{ find(strcmp('zrange',varargin))+1 };
+      else
+        zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
+      end
+
+      ix = find(obj.x >= xrange(1) & obj.x <= xrange(end));
+      iy = find(obj.y >= yrange(1) & obj.y <= yrange(end));
+      iz = find(obj.z >= zrange(1) & obj.z <= zrange(end));
+      indices = intersect(ix,intersect(iy,iz));
+    end
+
   end
   %--------------------------------------------------
 

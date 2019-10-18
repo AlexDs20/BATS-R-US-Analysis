@@ -7,7 +7,7 @@ b.clearField({'b1x','b1y','b1z','e'})
 uni = b.toBatsUni(0.5,{},'xrange',[-40 -10],'yrange',[-10 10],'zrange',[-5   5]);
 
 %load('../data/test1.mat');
-%reduced = uni.reduceDomain('xrange',[-40,0],'yrange',[-15 15],'zrange',[-15 15]);
+%uni = uni.reduceDomain('xrange',[-40,0],'yrange',[-15 15],'zrange',[-15 15]);
 
 load('/home/spiegel/Desktop/Programs/SWMF/data/uni.mat')
 
