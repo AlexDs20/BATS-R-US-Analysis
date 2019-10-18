@@ -281,13 +281,13 @@ classdef batsUni < bats
       %----------------------------------------
       %     TREAT INPUT
 
-      [plotType, variable, ...                   % GENERAL
+      [plotType, variable, ...                    % GENERAL
        xl, yl, zl, position, colorposition, ...
-       colorName, alpha, colorrange, ...         % Several Types
-       xslice, yslice, zslice, ...               % Slice
-       qIndices,  ...                         % Quiver
-       contourLevel, LineWidth, ...             % Contour
-       start ...                                % Stream
+       colorName, alpha, colorrange, ...          % Several Types
+       xslice, yslice, zslice, ...                % Slice
+       qIndices,  ...                             % Quiver
+       contourLevel, LineWidth, ...               % Contour
+       start ...                                  % Stream
        ] ...
         = obj.setInputValues(varargin(:));
 
