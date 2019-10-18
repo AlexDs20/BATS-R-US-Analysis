@@ -275,7 +275,8 @@ classdef batsUni < bats
       %         - 'level'
       %
       %       Stream:
-      %         - 'start'
+      %         - 'start', values ( [Nx3] array )
+      %         - 'forward', 'backward' : to only trace forward/backward, otherwise both
 
       %----------------------------------------
       %     TREAT INPUT
@@ -354,11 +355,15 @@ classdef batsUni < bats
         fieldy = double(permute(obj.([variable,'y']),[2 1 3]));
         fieldz = double(permute(obj.([variable,'z']),[2 1 3]));
 
-        hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
-                                start(:,1), start(:,2), start(:,3)) );
+        if isempty(find(strcmp('backward',varargin)))
+          hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
+                                  start(:,1), start(:,2), start(:,3)) );
+        end
 
-        hp2= streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
-                                start(:,1), start(:,2), start(:,3)) );
+        if isempty(find(strcmp('forward',varargin)))
+          hp2= streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
+                                  start(:,1), start(:,2), start(:,3)) );
+        end
 
         set(hp,'color',colorName,'LineWidth',LineWidth);
         set(hp2,'color',colorName,'LineWidth',LineWidth);
