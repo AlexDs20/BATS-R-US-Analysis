@@ -261,80 +261,132 @@ classdef batsUni < bats
       %
       %   All inputs:
       %   ----------
-      %     - 'newfigure'
-      %     - 'slice'
-      %     - 'quiver'
-      %     - 'contour'
-      %     - 'stream'
-      %     - 'surface'
-      %     - 'isosurface'
-      %     - 'variable'
-      %     - 'xlim', 'ylim', 'zlim'
-      %     - 'xrange','yrange','zrange'
-      %     - 'position'
-      %     - 'color'
-      %     - 'alpha'
-      %%%%% - 'colorposition'
-      %     - 'colorrange'
-      %     - 'xslice','yslice','zslice'
-      %     - 'linewidth'
-      %     - 'level'
-      %     - 'start'
-      %     - 'forward'
-      %     - 'backward'
-      %%%%% - 'interp'
-      %%%%% - 'fancylook'
+      %     - 'newfigure'                               Creates a new figure on which the plot is made
+      %     - 'slice'                                   plot slices of the domain
+      %     - 'quiver'                                  plot vector arrows in the domain
+      %     - 'contour'                                 plot contour level in a slice of the domain
+      %     - 'stream'                                  plot a streamline for a vector field
+      %     - 'surface'                                 plot any surface cutting the domain (user input a mesh)
+      %     - 'isosurface'                              plot surface level of a certain quantity (e.g. bx = 0 to identify magnetotail neutral sheet)
+      %     - 'variable', field                         the variable we want the plot/color of
+      %     - 'isovariable', field                      variable for which we want to find the isosurface
+      %     - 'xlim', [min, max]                        Range of the x axis shown on the plot
+      %     - 'ylim', [min, max]                        Range of the y axis shown on the plot
+      %     - 'zlim', [min, max]                        Range of the z axis shown on the plot
+      %     - 'xrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
+      %     - 'yrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
+      %     - 'zrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
+      %     - 'position', values                        Plot position in the figure
+      %     - 'color',value                             color of the shown data. Either [R G B] for a single color plot (stream,contour,isosurface). Or a colormap (slice,quiver,surface,isosurface)
+      %     - 'alpha',value                             transparency: between [0,1]
+      %%TBD - 'colorposition',value                     Position of the colorbar/label of the ploted quantity
+      %     - 'colorrange', [min max]                   range to use for the colorbar
+      %     - 'xslice', value(s)                        value at which we want to do the cut(s)
+      %     - 'yslice', value(s)                        value at which we want to do the cut(s)
+      %     - 'zslice', value(s)                        value at which we want to do the cut(s)
+      %     - 'linewidth',value                         width of the line to show
+      %     - 'level', value                            value at which we want equal value of the variable (contour,isosurface)
+      %     - 'start', [x,y,z]                          starting position for the stream
+      %     - 'forward'                                 only follow the stream along the field
+      %     - 'backward'                                only follow the stream in the direction opposite to the field (if none of 'forward','backward' are given, stream in both directions)
+      %%TBD - 'interp'
+      %%TBD - 'fancylook'                               Make the plot sick as fuck!
       %
-      %    General:
-      %      - 'newfigure'
-      %                -> this parameter MUST be given for the first plot or if you want to create a new figure
-      %                  All following plots will be added on the selected figure given by the handle gcf.
-      %      - 'slice', 'quiver', 'contour', 'stream', 'surface'
-      %% IMPLEMENT SURFACE AND ISOSURFACE
-      %                -> which type of plot:
-      %                      - slice: cut slices in the 3D domain at the position given by xslice,yslice,zslice
-      %                      - quiver: make quiver plot of field in a certain domain: xrange,yrange,zrange
-      %                      - contour: Make a contour plot of a field in certain planes given by xslice,yslice,zslice
-      %                      - stream: draw streamlines of a vector field
-      %                      - surface: allow to show any surfaces in the domain.
-      %                            The user must provind the X,Y,Z mesh of the surface as parameters following 'surface'
-      %      - 'variable', value
-      %                -> what variable to plot.
-      %                   If plotting a quiver or stream, only use e.g. 'u', 'b', ... (not the components)
       %
-      %      - 'xlim', value ([min max])
-      %      - 'ylim', value ([min max])
-      %      - 'zlim', value ([min max])
-      %                -> range values of the domain shown
-      %      - 'position', value ([x0 y0 xsize ysize]) (in Normalized units)
-      %                -> position of the plot in the figure
-      %      - 'color', colorName    : a colormap or a [r g b] value
-      %                -> color for the plot:
-      %                    - If slice, quiver, or surface:  you can give the string name or the actual colormap
-      %                    - If contour or stream: just input [r g b]
+      %   Which inputs are allowed?
+      %   ------------------------
+      %     General simple rules:
+      %     --------------------
       %
-      %    Quiver and Contour:
-      %      - 'xrange', 'yrange', 'zrange', value ([min max])
-      % % IMPLEMENT XRANGE FOR SLICE, STREAM, SURFACE AND ISOSURFACE
+      %       - The first plot MUST include 'newfigure'
+      %       - A type of plot MUST always be given: 'slice', 'quiver', 'contour', 'stream', 'surface', 'isosurface'
+      %       - The ('variable',value) pair MUST always be given except for isosurface where it is optional.
+      %         For isosurface, the 'isovariable' is a MUST.
       %
-      %    Slice and Quiver:
-      %      - 'alpha', value
-      %      - 'colorposition', value ('left' or 'right')
-      %      - 'colorrange', value ([min max])
+      %     Slice:
+      %     -----
+      %       MUST:
+      %         - 'slice'
+      %         - 'variable',value
+      %         - 'xslice',values or 'yslice',values or 'zslice',values
+      %             several values may be given and will create several cuts showing the variable values in the cut
       %
-      %    Slice and Contour:
-      %      - 'xslice', 'yslice', 'zslice', value (in Re)
+      %       Optional:
+      %         - 'color',value : can be a colormap string or [Nx3]
+      %         - 'alpha',value
+      %         - 'colorrange',values
+      %         - 'xrange', 'yrange', 'zrange': to reduce the domain in which the slice is done
+      %         - 'colorposition'
       %
-      %    Contour and Stream:
-      %      - 'LineWidth', vale: with of the lines
+      %     Quiver:
+      %     ------
+      %       MUST:
+      %         - 'quiver'
+      %         - 'variable',value : variable must be a vector field quantity e.g. 'u', 'j', 'E', 'b', ...
+      %                               it should not include the x,y,z at the end!
       %
-      %    Contour:
-      %      - 'level', value: enter 1 value for the level you want to plot
+      %       Optional:
+      %         - 'color',value : colormap string or [Nx3] used to color the vector with their magnitudes
+      %         - 'colorrange',values
+      %         - 'linewidth',value
+      %         - 'xrange','yrange','zrange' to only show the vectors in this sub-domain defined by these inputs
+      %         - 'colorposition'
       %
-      %    Stream:
-      %      - 'start', value: ( [Nx3] array with the starting positions)
-      %      - 'forward', 'backward': if we want to only trace forward or backard
+      %     Contour:
+      %     ------
+      %       MUST:
+      %         - 'contour'
+      %         - 'variable',value
+      %         - 'level',value     : value at which we want to show the variable (we show: variable=level)
+      %%TBD     - 'xslice', 'yslice' or 'zslice': only one value for the moment
       %
+      %       Optional:
+      %         - 'color',value   : color of the line shown [R G B]
+      %         - 'linewidth',value
+      %         - 'alpha', value
+      %         - 'xrange','yrange','zrange' with values [min max] to limit the domain in which to show the plot
+      %%TBD     - 'colorposition'
+      %
+      %     Stream:
+      %     ------
+      %       MUST:
+      %         - 'contour'
+      %         - 'variable',value      : of a vector field e.g. 'u', 'j', ...
+      %         - 'start',values        : [x,y,z] position at which we start the streamline
+      %
+      %       Optional:
+      %         - 'color',value : [R G B]
+      %         - 'linewidth',value
+      %         - 'forward'             : to only show along the field
+      %         - 'backward'            : to only show anti-parallel to the field
+      %         - 'xrange','yrange','zrange'  : to only show part of the domain
+      %         - 'colorposition'
+      %
+      %     Surface:
+      %     -------
+      %       MUST:
+      %         - 'surface',X,Y,Z       : where X, Y, Z is the mesh of the surface (see example below)
+      %         - 'variable', value
+      %
+      %       Optional:
+      %         - 'color',value         : colormap name or [Nx3]
+      %         - 'alpha',value
+      %         - 'colorrange', [min max]
+      %%TBD     - 'colorposition',value
+      %
+      %     Isosurface:
+      %     ----------
+      %       MUST:
+      %         - 'isosurface'
+      %         - 'isovariable', value    : field for which we want the surface
+      %         - 'level', value          : value at which we want to show the fields' surface
+      %
+      %       Optional:
+      %         - 'variable', value       : Field for which we show the color on the isosurface
+      %         - 'color',value
+      %         - 'alpha',value
+      %         - 'colorrange',[min max]
+      %%TBD     - 'colorposition',value
       %
       % EXAMPLES:
       % --------
@@ -368,8 +420,6 @@ classdef batsUni < bats
       %
       %
       %     Add lighting stuff, so that it looks sick af!
-      %
-      %
       %
       %
 

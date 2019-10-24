@@ -37,6 +37,8 @@ The color on the surface may be requested to be that of a field.
 the use of this code beyond BATS-R-US).
 
 ## Quick start:
+This example will reproduce the plot shown on this page.
+
 1. Load the output data:
 ```matlab
 data = bats('file',string_to_cdf_file);
@@ -62,12 +64,17 @@ Other plots are possible by calling uni.plot('plottype') with plottype:
 slice/quiver/contour/stream/surface/isosurface
 
 ## List-form class: bats
-One class is called bats, the only thing it can do is read a cdf file and
-calculate a bunch of physical quantities (see table below).
+The only thing this class can do is read a cdf file, calculate a bunch of physical quantities (see table below) and create a batsUni object (see below).
 No plot or anything else is provided for this class (because I don't know how to
 nicely handle the leaves of the adaptive grid so that plots could easily be made).
 
-The initial output quantities from the simulation are in:
+Basic knowledge about the simulation is stored in:
+```matlab
+obj.Global
+```
+It contains the units for the variables, the range, the name of the loaded file.
+
+The output quantities from the simulation are in:
 ```matlab
 obj.Output
 ```
@@ -85,24 +92,23 @@ them in order!
 
 Inputs                  | Calculates                                                                             | Necessary parameters
 ------------------------|----------------------------------------------------------------------------------------|----------------------
-*calc_b*                | magnitude of the magnetic field                                                        |
-*calc_b1*               | magnitude of the magnetic field deviation to the dipole                                |
-*calc_u*                | magnitude of the bulk velocity                                                         |
-*calc_rhoU*             | momentum                                                                               |
-*calc_j*                | current density                                                                        |
-*calc_jxb*              | $$\mathbf{J}\times\mathbf{B}$$ force                                                   |
-*calc_E*                | Electric field as $$-\mathbf{u}\times\mathbf{B}$$                                      |
-*calc_temp*             | Temperature as: $$T = \frac{P}{n}$$ (in eV)                                            |
-*calc_temp*             | Temperature as: $$T = \frac{P}{n}$$ (in eV)                                            |
-*calc_pb*               | Magnetic pressure                                                                      |
-*calc_beta*             | Plasma beta                                                                            |
-*calc_alfven*           | Alfven speed                                                                           |
-*calc_vth*              | Thermal speed as: $$v_{th} = \sqrt{2*P/(n*m)}$$                                        |
-*calc_gyroradius*       | Ion (proton) gyroradius                                                                |
-*calc_plasmafreq*       | Ion plasma frequency                                                                   |
-*calc_inertiallength*   | Ion inertial length (scale below which MHD does not hold)                              |
-*calc_electronVelocity* | Electron velocity as: $$\mathbf{V}_e = \mathbf{u} - (m_p/(m_p+m_e)) * \mathbf{J}/en$$  |
-*calc_protonVelocity*   | Proton velocity as: $$\mathbf{V}_i = \mathbf{u} + (m_e/(m_p+m_e)) * \mathbf{J}/en$$    |
+*calc_b*                | magnitude of the magnetic field                                                        | bx,by,bz
+*calc_b1*               | magnitude of the magnetic field deviation to the dipole                                | b1x, b1y,b1z
+*calc_u*                | magnitude of the bulk velocity                                                         | ux,uy,uz
+*calc_rhoU*             | momentum                                                                               | rho,ux,uy,uz
+*calc_j*                | current density                                                                        | jx,jy,jz
+*calc_jxb*              | $$\mathbf{J}\times\mathbf{B}$$ force                                                   | jx,jy,jz,bx,by,bz
+*calc_E*                | Electric field as $$-\mathbf{u}\times\mathbf{B}$$                                      | ux,uy,uz,bx,by,bz
+*calc_temp*             | Temperature as: $$T = \frac{P}{n}$$ (in eV)                                            | p, rho
+*calc_pb*               | Magnetic pressure                                                                      | b (i.e. must call calc_b first)
+*calc_beta*             | Plasma beta                                                                            | p,pb
+*calc_alfven*           | Alfven speed                                                                           | b,rho
+*calc_vth*              | Thermal speed as: $$v_{th} = \sqrt{2*P/(n*m)}$$                                        | temp
+*calc_gyroradius*       | Ion (proton) gyroradius                                                                | u,vth,b
+*calc_plasmafreq*       | Ion plasma frequency                                                                   | rho
+*calc_inertiallength*   | Ion inertial length (scale below which MHD does not hold)                              | alfven,plasmafreq
+*calc_electronVelocity* | Electron velocity as: $$\mathbf{V}_e = \mathbf{u} - (m_p/(m_p+m_e)) * \mathbf{J}/en$$  | rho,jx,jy,jz,ux,uy,uz
+*calc_protonVelocity*   | Proton velocity as: $$\mathbf{V}_i = \mathbf{u} + (m_e/(m_p+m_e)) * \mathbf{J}/en$$    | rho,jx,jy,jz,ux,uy,uz
 
 Note that because the data are in list form, we do not calculate any
 derivative-based quantities.
@@ -135,17 +141,15 @@ can easily be evaluated.
 
 Additional calculations are the followings:
 
-Inputs                  | Calculates                                                                             | Necessary parameters
-------------------------|----------------------------------------------------------------------------------------|----------------------
-*calc_gradPb*           | Gradient of magnetic pressure                                                          |
-*calc_gradP*            | Gradient of the plasma pressure                                                        |
-*calc_vorticity*        | Vorticity as: $$\mathbf{\omega}= \nabla\times\mathbf{u}$$                              |
-*calc_divBB*            | Divergence of the magnetic energy tensor as: $$\text{Output} = \nabla\cdot\left(\frac{\mathbf{BB}}{\mu_0}}\right)$$     |
-*calc_divRhoUU*         | Divergence of the magnetic energy tensor as: $$\text{Output} = \nabla\cdot\left(\rho\mathbf{uu}\right)$$                |
+Inputs                  | Calculates                                                                                                              | Necessary parameters
+------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------
+*calc_gradPb*           | Gradient of magnetic pressure                                                                                           | pb
+*calc_gradP*            | Gradient of the plasma pressure                                                                                         | p
+*calc_vorticity*        | Vorticity as: $$\mathbf{\omega}= \nabla\times\mathbf{u}$$                                                               | ux,uy,uz
+*calc_divBB*            | Divergence of the magnetic energy tensor as: $$\text{Output} = \nabla\cdot\left(\frac{\mathbf{BB}}{\mu_0}}\right)$$     | bx,by,bz
+*calc_divRhoUU*         | Divergence of the magnetic energy tensor as: $$\text{Output} = \nabla\cdot\left(\rho\mathbf{uu}\right)$$                | rhoUx,rhoUy,rhoUz,ux,uy,uz
 
 ### Example:
-This example will reproduce the plot shown on this page.
-
 1. Load data into a bats class
 ```matlab
 data = bats('file',string_to_file,'var',{'x','y','z','jx','jy','jz','bx','by','bz'});

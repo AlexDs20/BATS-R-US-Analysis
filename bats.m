@@ -547,7 +547,6 @@ classdef bats < handle
       end
     end
     %------------------------------------------------------------
-
   end   % Methods
 
   methods (Hidden)
