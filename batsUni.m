@@ -495,7 +495,6 @@ classdef batsUni < bats
 
           cb = []; cl = [];
         end
-
         %camlight
         %lighting gouraud
 
