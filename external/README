@@ -16,7 +16,7 @@ to make the plots smoothly.
     It allows to give the quiver plot colors depending on the magnitude.
     The Length function is not used yet but may be implemented later on.
     It would allow to make e.g. all vector of the same length, or, limit the
-    maximum size of a vector, ...
+    maximum size of a vector, fix the shape of the head, ...
 
     original link:
     https://se.mathworks.com/matlabcentral/fileexchange/71837-quiver-color-and-length-management?s_tid=prof_contriblnk
