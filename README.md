@@ -2,7 +2,7 @@
 
 ## Example of output:
 
-![](snapshots/sample.png)
+![](snapshots/sample.png =250x)
 
 Working but in development.
 Documentation and error handling is minimalist.
