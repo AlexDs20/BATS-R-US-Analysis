@@ -11,31 +11,32 @@ Documentation and error handling is minimalist/non-existent.
 Only the plot function has documentation and examples.
 
 ## What is implemented:
--[x] Conversion from the adaptive grid to uniform grid using interpolation
--[x] All the quantities from the momentum equation (see eq. 7 and 10 from Powell
+
+- [x] Conversion from the adaptive grid to uniform grid using interpolation
+- [x] All the quantities from the momentum equation (see eq. 7 and 10 from Powell
 et al.\ 1999).
--[x] A large number of derived parameters (find exhaustive list below).
--[x] Powerful and user-friendly plot function
--[x] Plot Slice: simple straight cut in the domain
--[x] Plot Quiver: vector field shown using vectors in 3D in a defined rectangular domain
--[x] Plot Contour: level contour of a quantity in the requested plane
--[x] Plot Stream: trace a line along the requested vector field starting at a
+- [x] A large number of derived parameters (find exhaustive list below).
+- [x] Powerful and user-friendly plot function
+- [x] Plot Slice: simple straight cut in the domain
+- [x] Plot Quiver: vector field shown using vectors in 3D in a defined rectangular domain
+- [x] Plot Contour: level contour of a quantity in the requested plane
+- [x] Plot Stream: trace a line along the requested vector field starting at a
 certain position
--[x] Plot Surface: Allows *any* cuts in the domain provided by the user. The
+- [x] Plot Surface: Allows *any* cuts in the domain provided by the user. The
 user must give a mesh for the surface.
--[x] Plot Isosurface: Find the surface for which a variable has a given value.
+- [x] Plot Isosurface: Find the surface for which a variable has a given value.
 The color on the surface may be requested to be that of a field.
 
 ## What is *not* implemented:
--[ ] Quiver plot on a surface given by the user
--[ ] Quiver plot on the isosurface
--[ ] Lighting to make the figure sick af!
--[ ] Documentation
--[ ] Good handling of the colorbars positions
--[ ] All for reading inputs that are directly in mesh format (this would extend
+- [ ] Quiver plot on a surface given by the user
+- [ ] Quiver plot on the isosurface
+- [ ] Lighting to make the figure sick af!
+- [ ] Documentation
+- [ ] Good handling of the colorbars positions
+- [ ] All for reading inputs that are directly in mesh format (this would extend
 the use of this code beyond BATS-R-US).
 
-## How to get started quickly:
+## Quick start:
 1. Load the output data:
 ```matlab
 data = bats('file',string_to_cdf_file);
@@ -52,7 +53,7 @@ Now looking at uni.Output, you will see that it is a mesh rather than a list.
 
 3. Plot using uni.plot(ARGIN) (see 'help uni.plot' for more details)
 ```matlab
-uni.plot('newfigure', 'isosurface','isovariable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','variable','ux','color','jet);
+uni.plot('newfigure', 'isosurface','isovariable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','variable','ux','color','jet');
 uni.plot('slice','variable','ux','yslice',0,'color','jet','colorposition','right','alpha',0.7);
 uni.plot('stream','variable','b','start',[-25 -7 0],'color',[1,0,1],'linewidth',2);
 ```
