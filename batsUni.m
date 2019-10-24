@@ -126,7 +126,6 @@ classdef batsUni < bats
     %----------------------------------------
     %   Calculating Derivative based things
     %----------------------------------------
-    %----------------------------------------
     function obj = calc_gradPb(obj)
       [obj.GradPbx,obj.GradPby,obj.GradPbz,obj.GradPb] = ...
                    obj.calc_grad('Pb');
@@ -245,71 +244,166 @@ classdef batsUni < bats
     %----------------------------------------
     %     Plotting shit
     %----------------------------------------
-    function plot(obj,varargin)
+    function h = plot(obj,varargin)
+      % DESCRPITION:
+      % -----------
+      %     Create flexible plot for BATS-R-US simulation output once converted into a uniform grid.
+      %     Additional calls of the plot function allow to add information on an already made plot.
+      %     Possibility to make silces, quiver, contour, streamlines, surface and isosurface plots in the
+      %     3D domain.
+      %     Each of the plot type have a number of possible input parameters which are usually given as
+      %     ('keyword', value) pair.
       %
       % INPUTS:
-      %       GLOBALS:
-      %         - 'slice', 'quiver', 'contour', 'stream'
-      %         - 'variable', value
-      %         - 'xlim', value ([min max])
-      %         - 'ylim', value ([min max])
-      %         - 'zlim', value ([min max])
-      %         - 'position', value ([x0 y0 xsize ysize]) (in Normalized units)
-      %         - 'color', colorName    : a colormap or a [r g b] value
+      % ------
+      %   We first list all the possible inputs and what they do.
+      %   Then, for each type of plot, we list the inputs that work.
       %
-      %       Slice and Quiver
-      %         - 'alpha', value
-      %         - 'colorposition', value ('left' or 'right')
-      %         - 'colorrange', value ([min max])
+      %   All inputs:
+      %   ----------
+      %     - 'newfigure'
+      %     - 'slice'
+      %     - 'quiver'
+      %     - 'contour'
+      %     - 'stream'
+      %     - 'surface'
+      %     - 'isosurface'
+      %     - 'variable'
+      %     - 'xlim', 'ylim', 'zlim'
+      %     - 'xrange','yrange','zrange'
+      %     - 'position'
+      %     - 'color'
+      %     - 'alpha'
+      %%%%% - 'colorposition'
+      %     - 'colorrange'
+      %     - 'xslice','yslice','zslice'
+      %     - 'linewidth'
+      %     - 'level'
+      %     - 'start'
+      %     - 'forward'
+      %     - 'backward'
+      %%%%% - 'interp'
+      %%%%% - 'fancylook'
       %
-      %       Slice and Contour:
-      %         - 'xslice', 'yslice', 'zslice', value (in Re)
+      %    General:
+      %      - 'newfigure'
+      %                -> this parameter MUST be given for the first plot or if you want to create a new figure
+      %                  All following plots will be added on the selected figure given by the handle gcf.
+      %      - 'slice', 'quiver', 'contour', 'stream', 'surface'
+      %% IMPLEMENT SURFACE AND ISOSURFACE
+      %                -> which type of plot:
+      %                      - slice: cut slices in the 3D domain at the position given by xslice,yslice,zslice
+      %                      - quiver: make quiver plot of field in a certain domain: xrange,yrange,zrange
+      %                      - contour: Make a contour plot of a field in certain planes given by xslice,yslice,zslice
+      %                      - stream: draw streamlines of a vector field
+      %                      - surface: allow to show any surfaces in the domain.
+      %                            The user must provind the X,Y,Z mesh of the surface as parameters following 'surface'
+      %      - 'variable', value
+      %                -> what variable to plot.
+      %                   If plotting a quiver or stream, only use e.g. 'u', 'b', ... (not the components)
       %
-      %       Quiver and Contour:
-      %         - 'xrange', 'yrange', 'zrange', value ([min max])
+      %      - 'xlim', value ([min max])
+      %      - 'ylim', value ([min max])
+      %      - 'zlim', value ([min max])
+      %                -> range values of the domain shown
+      %      - 'position', value ([x0 y0 xsize ysize]) (in Normalized units)
+      %                -> position of the plot in the figure
+      %      - 'color', colorName    : a colormap or a [r g b] value
+      %                -> color for the plot:
+      %                    - If slice, quiver, or surface:  you can give the string name or the actual colormap
+      %                    - If contour or stream: just input [r g b]
       %
-      %       Contour and Stream:
-      %         - 'LineWidth'
+      %    Quiver and Contour:
+      %      - 'xrange', 'yrange', 'zrange', value ([min max])
+      % % IMPLEMENT XRANGE FOR SLICE, STREAM, SURFACE AND ISOSURFACE
       %
-      %       Contour:
-      %         - 'level'
+      %    Slice and Quiver:
+      %      - 'alpha', value
+      %      - 'colorposition', value ('left' or 'right')
+      %      - 'colorrange', value ([min max])
       %
-      %       Stream:
-      %         - 'start'
-
-      %----------------------------------------
-      %     TREAT INPUT
-
-      [plotType, variable, ...                   % GENERAL
-       xl, yl, zl, position, colorposition, ...
-       colorName, alpha, colorrange, ...         % Several Types
-       xslice, yslice, zslice, ...               % Slice
-       qIndices,  ...                         % Quiver
-       contourLevel, LineWidth, ...             % Contour
-       start ...                                % Stream
-       ] ...
-        = obj.setInputValues(varargin(:));
-
-      %------------------------------
-      % To apply on all axes
+      %    Slice and Contour:
+      %      - 'xslice', 'yslice', 'zslice', value (in Re)
+      %
+      %    Contour and Stream:
+      %      - 'LineWidth', vale: with of the lines
+      %
+      %    Contour:
+      %      - 'level', value: enter 1 value for the level you want to plot
+      %
+      %    Stream:
+      %      - 'start', value: ( [Nx3] array with the starting positions)
+      %      - 'forward', 'backward': if we want to only trace forward or backard
+      %
+      %
+      % EXAMPLES:
+      % --------
+      %
+      %   Slice:
+      %     uni.plot('newfigure','slice','variable','ux','zslice',0,'color','jet','colorposition','right');
+      %     uni.plot('slice','variable','ux','yslice',0,'color','parula', ...
+      %               'colorposition','left','alpha',0.8,'colorrange',[-200 800]);
+      %
+      %   Quiver:
+      %     uni.plot('quiver','variable','u','zrange',0,'color','parula','colorrange',[0 800]);
+      %
+      %   Contour:
+      %     uni.plot('contour','variable','bz','zslice',0,'color',[1 0 0]);
+      %
+      %   Stream:
+      %     uni.plot('stream','variable','b','start',[-25 0 0],'color',[0 1 0],'linewidth',2,'forward', ...
+      %               'xrange',[-30, -10]);
+      %
+      %   Surface:
+      %     % Get the surface you are interested in
+      %     [Y,Z] = meshgrid([-10:0.15:10],[-10:0.15:10]);
+      %     myX = @(Y,Z)(- sqrt((5*Y.^2 + 10*Z.^2)) - 10 );
+      %     X = myX(Y,Z);
+      %     uni.plot('surface',X,Y,Z,'variable','ux','color','cool', 'colorrange',[-400 400],'xlim',[-60 20]);
+      %
+      %   Isosurface:
+      %     uni.plot('isosurface','isovariable','bx','level',0, ...
+      %               'xrange',[-30 -10],'yrange',[-10 10],'alpha',0.7, ...
+      %               'colorposition','right','variable','ux','color','jet');
+      %
+      %
+      %     Add lighting stuff, so that it looks sick af!
+      %
+      %
+      %
+      %
 
       % Check if we want a new figure
       if find(strcmp('newfigure',varargin))
-        h = figure; set(h,'Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
+        h = figure('Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
         visible = 'on';
-        ax = axes;
+        ax = axes(h);
       else
         h = gcf;
         visible = 'off';
         ax_prev = findall(h,'type','axes');
-        % Create a new axes, copy of the previous one
-        ax = copyobj(ax_prev(1),h);
+        % Create a new axes, copy of the previous one but I remove the plots that are on it.
+        ax = copyobj(ax_prev(end),h);
+        delete(get(ax,'Children'));
       end
-        % GET ALL INFO OF AXES
+
+      %----------------------------------------
+      %     TREAT INPUT
+      [plotType, variable, ...                    % GENERAL
+       xl, yl, zl, position, colorposition, ...
+       colorName, alpha, colorrange, ...          % Several Types
+       xslice, yslice, zslice, ...                % Slice and Contour
+       qIndices, ix, iy, iz, ...                  % Quiver
+       level, LineWidth, ...               % Contour
+       start, ...                                 % Stream
+       X, Y, Z ...
+       ] ...
+        = obj.setInputValues(varargin(:));
+
 
       if plotType == 1
-        [x,y,z] = meshgrid(unique(obj.x),unique(obj.y),unique(obj.z));
-        field = permute(obj.(variable),[2 1 3]);
+        [x,y,z] = meshgrid(unique(obj.x(ix,iy,iz)),unique(obj.y(ix,iy,iz)),unique(obj.z(ix,iy,iz)));
+        field = permute(obj.(variable)(ix,iy,iz),[2 1 3]);
 
         hp = slice( ax, x,y,z, field, single(xslice),single(yslice),single(zslice) );
         set(hp, ...
@@ -319,7 +413,6 @@ classdef batsUni < bats
         colormap(ax,colorName);
         cb = colorbar(ax);
         cl = [variable,' [',obj.GlobalUnits.(variable),']'];
-
       elseif plotType == 2
         x = obj.x(qIndices);
         y = obj.y(qIndices);
@@ -334,37 +427,78 @@ classdef batsUni < bats
         SetQuiverColor(hp,colormap(ax,colorName), ...
                         'range', colorrange, ...
                         'mags',  sqrt(fieldx.^2+fieldy.^2+fieldz.^2) );
+        set(hp,'LineWidth',LineWidth);
         cb = colorbar(ax);
         cl = [variable,' [',obj.GlobalUnits.([variable,'x']),']'];
 
         % SetLength?
       elseif plotType == 3
-        [x,y,z] = meshgrid(unique(obj.x),unique(obj.y),unique(obj.z));
-        field = permute(obj.(variable),[2 1 3]);
+        [x,y,z] = meshgrid(unique(obj.x(ix,iy,iz)),unique(obj.y(ix,iy,iz)),unique(obj.z(ix,iy,iz)));
+        field = permute(obj.(variable)(ix,iy,iz),[2 1 3]);
         hp = contourslice(ax, x,y,z, field, single(xslice),single(yslice),single(zslice), ...
-                          [contourLevel contourLevel]);
+                          [level level]);
         colormap(ax,colorName)
-        set(hp(:),'LineWidth',LineWidth);
+        set(hp(:),'LineWidth',LineWidth,'EdgeAlpha',alpha);
 
         cb = [];
         cl = [];
       elseif plotType == 4
-        [x,y,z] = meshgrid( double(unique(obj.x)),double(unique(obj.y)),double(unique(obj.z)));
-        fieldx = double(permute(obj.([variable,'x']),[2 1 3]));
-        fieldy = double(permute(obj.([variable,'y']),[2 1 3]));
-        fieldz = double(permute(obj.([variable,'z']),[2 1 3]));
+        [x,y,z] = meshgrid( double(unique(obj.x(ix,iy,iz))), ...
+                  double(unique(obj.y(ix,iy,iz))),double(unique(obj.z(ix,iy,iz))));
+        fieldx = double(permute(obj.([variable,'x'])(ix,iy,iz),[2 1 3]));
+        fieldy = double(permute(obj.([variable,'y'])(ix,iy,iz),[2 1 3]));
+        fieldz = double(permute(obj.([variable,'z'])(ix,iy,iz),[2 1 3]));
 
-        hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
-                                start(:,1), start(:,2), start(:,3)) );
-
-        hp2= streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
-                                start(:,1), start(:,2), start(:,3)) );
-
-        set(hp,'color',colorName,'LineWidth',LineWidth);
-        set(hp2,'color',colorName,'LineWidth',LineWidth);
+        if isempty(find(strcmp('backward',varargin)))
+          hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
+                                  start(:,1), start(:,2), start(:,3)) );
+          set(hp,'color',colorName,'LineWidth',LineWidth);
+        end
+        if isempty(find(strcmp('forward',varargin)))
+          hp2 = streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
+                                  start(:,1), start(:,2), start(:,3)) );
+          set(hp2,'color',colorName,'LineWidth',LineWidth);
+        end
 
         cb = [];
         cl = [];
+      elseif plotType == 5
+        F = griddedInterpolant(obj.x,obj.y,obj.z,obj.(variable),'nearest');
+        field = F(X,Y,Z);
+
+        hp = surf(ax, X,Y,Z,field);
+        set(hp,'EdgeColor','none','FaceAlpha',alpha);
+
+        colormap(ax,colorName);
+        cb = colorbar(ax);
+        cl = [variable,' [',obj.GlobalUnits.(variable),']'];
+      elseif plotType == 6
+        IsoVariable = varargin{ find(strcmp('isovariable',varargin))+1 };
+
+        [x,y,z] = meshgrid( double(unique(obj.x(ix,iy,iz))), ...
+                  double(unique(obj.y(ix,iy,iz))),double(unique(obj.z(ix,iy,iz))));
+        IsoField = double(permute(obj.(IsoVariable)(ix,iy,iz),[2 1 3]));
+        if ~isempty(variable)
+          colorField = double(permute(obj.(variable)(ix,iy,iz),[2 1 3]));
+          [faces,verts,colors] = isosurface(x,y,z,IsoField,level,colorField);
+          hp = patch(ax, 'Vertices',verts,'Faces',faces,'FaceVertexCData',colors,...
+                        'FaceColor','flat', 'EdgeColor','flat', 'EdgeColor','none','FaceAlpha',alpha);
+                      %'FaceColor','interp','EdgeColor','interp');
+          isonormals(x,y,z,IsoField,hp);
+          colormap(ax, colorName);
+          cb = colorbar(ax);
+          cl = [variable,' [',obj.GlobalUnits.(variable),']'];
+        else
+          hp = patch(ax, isosurface(x,y,z,IsoField,level));
+          isonormals(x,y,z,IsoField,hp);
+          set(hp, 'FaceColor',colorName, 'EdgeColor','none','FaceAlpha',alpha);
+
+          cb = []; cl = [];
+        end
+
+        %camlight
+        %lighting gouraud
+
       else
         cb = []; cl = [];
       end
@@ -372,14 +506,86 @@ classdef batsUni < bats
       obj.setProperties(ax,cb,xl,yl,zl,position,visible, ...
               cl,colorposition,colorrange);
 
-      if (plotType == 1 | plotType == 2 | plotType == 3) ...
-           & isempty(find(strcmp('newfigure',varargin)))
+    % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
+      if isempty(find(strcmp('newfigure',varargin)))
         % Linkaxes:
         Link = linkprop([ax; ax_prev],{'CameraUpVector', 'CameraPosition', 'CameraTarget', 'XLim', 'YLim', 'ZLim'});
-        setappdata(gcf, 'StoreTheLink', Link);
-
-        %scopy = copyobj(s,ax_prev);
-        %delete(s);
+        setappdata(h, 'StoreTheLink', Link);
+        if plotType == 1
+          for j = 1 : numel(hp)
+            RGB = cmapping(hp(j).CData,colorName,colorrange);
+            hpCopy = copyobj(hp(j),ax_prev(end));
+            set(hpCopy,'CData',RGB);
+            delete(hp(j));
+          end
+        elseif plotType == 2
+          hpCopy = copyobj(hp,ax_prev(end));
+          delete(hp)
+        elseif plotType == 3
+          for j = 1 : numel(hp)
+            C = ones([size(hp(j).CData),3]);
+            C(:,:,1) = colorName(1).*C(:,:,1);
+            C(:,:,2) = colorName(2).*C(:,:,2);
+            C(:,:,3) = colorName(3).*C(:,:,3);
+            C(3,:,:) = NaN;
+            set(hp(j),'CData',C);
+            hpCopy = copyobj(hp(j),ax_prev(end));
+          end
+          delete(ax);
+        elseif plotType == 4
+          if exist('hp')
+            hpCopy = copyobj(hp,ax_prev(end));
+            delete(hp)
+          end
+          if exist('hp2')
+            hpCopy = copyobj(hp2,ax_prev(end));
+            delete(hp2)
+          end
+          delete(ax);
+        elseif plotType == 5
+          for j = 1 : numel(hp)
+            RGB = cmapping(hp(j).CData,colorName,colorrange);
+            hpCopy = copyobj(hp(j),ax_prev(end));
+            set(hpCopy,'CData',RGB);
+            delete(hp(j));
+          end
+        elseif plotType == 6
+          if ~isempty(variable)
+            RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
+            hpCopy = copyobj(hp,ax_prev(end));
+            set(hpCopy,'FaceVertexCData',RGB);
+            delete(hp);
+          else
+            hpCopy = copyobj(hp,ax_prev(end));
+            delete(ax);
+          end
+        end
+      else
+        % Change to real colors
+        if plotType == 1 || plotType == 5
+          for j = 1 : numel(hp)
+            RGB = cmapping(hp(j).CData,colorName,colorrange);
+            set(hp(j),'CData',RGB);
+          end
+        elseif plotType == 3
+            C = ones([size(hp(j).CData),3]);
+            C(:,:,1) = colorName(1).*C(:,:,1);
+            C(:,:,2) = colorName(2).*C(:,:,2);
+            C(:,:,3) = colorName(3).*C(:,:,3);
+            C(3,:,:) = NaN;
+            set(hp(j),'CData',C);
+        elseif plotType == 6
+          if ~isempty(variable)
+            RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
+            set(hp,'FaceVertexCData',RGB);
+          end
+        end
+        %axis vis3d
+        %h = light;
+        %for az = -50:10:50
+        %  lightangle(h,az,30)
+        %  pause(.1)
+        %end
       end
     end
   end
@@ -442,7 +648,7 @@ classdef batsUni < bats
     end
     %--------------------------------------------------
     function [vecx, vecy, vecz, vec] = calc_grad(obj,var)
-    % Output Units: [inputs]/m
+      % Output Units: [inputs]/m
       Re = 6371.2e3;
       [vecx,vecy,vecz] = gradient(obj.(var),obj.GlobalCellSize*Re);
 
@@ -450,7 +656,7 @@ classdef batsUni < bats
     end
     %--------------------------------------------------
     function [curlx, curly, curlz, curlMag] = calc_curl(obj,var)
-    % Output: Units: [inputs/m];
+      % Output: Units: [inputs/m];
       varx = [var,'x'];
       vary = [var,'y'];
       varz = [var,'z'];
@@ -506,9 +712,10 @@ classdef batsUni < bats
               xl, yl, zl, position, colorposition, ...
               colorName, alpha, colorrange, ...         % Several Types
               xslice, yslice, zslice, ...               % Slice
-              qIndices, ...                             % Quiver
-              contourLevel, LineWidth, ...              % Contour
-              start ...                                 % Stream
+              qIndices, ix, iy, iz, ...                 % Quiver
+              level, LineWidth, ...              % Contour
+              start, ...                                % Stream
+              X, Y, Z ...                               % Surface
               ] ...
             = setInputValues(obj,var)
 
@@ -523,27 +730,45 @@ classdef batsUni < bats
           plotType = 3;
         elseif find(strcmp('stream',var))
           plotType = 4;
+        elseif find(strcmp('surface',var))
+          plotType = 5;
+        elseif find(strcmp('isosurface',var))
+          plotType = 6;
         end
 
         if find(strcmp('variable',var))
           variable = var{ find(strcmp('variable',var))+1 };
+        else
+          variable = [];
         end
 
-
+        ca = findall(gcf,'type','axes');
         if find(strcmp('xlim',var))
           xl = var{ find(strcmp('xlim',var))+1 };
         else
-          xl = obj.GlobalXRange;
+          if ~find(strcmp('newfigure',var))
+            xl = ca.XLim;
+          else
+            xl = obj.GlobalXRange;
+          end
         end
         if find(strcmp('ylim',var))
           yl = var{ find(strcmp('ylim',var))+1 };
         else
-          yl = obj.GlobalYRange;
+          if ~find(strcmp('newfigure',var))
+            yl = ca.YLim;
+          else
+            yl = obj.GlobalYRange;
+          end
         end
         if find(strcmp('zlim',var))
           zl = var{ find(strcmp('zlim',var))+1 };
         else
-          zl = obj.GlobalZRange;
+          if ~find(strcmp('newfigure',var))
+            zl = ca.ZLim;
+          else
+            zl = obj.GlobalZRange;
+          end
         end
 
         if find(strcmp('position',var))
@@ -561,21 +786,23 @@ classdef batsUni < bats
           alpha = 1;
         end
 
+        % INTERP
+
+      %----------------------------------------
+      %       Color
+      %----------------------------------------
         if find(strcmp('color',var))
           colorName = var{ find(strcmp('color',var))+1 };
         else
-          if (plotType == 1 | plotType == 2)
+          if (plotType == 1 | plotType == 2 | plotType == 5 | plotType == 6)
             colorName = 'parula';
           elseif plotType == 3
             colorName = [1 0 1];
           elseif plotType == 4
-            colorName = [0.7, 0.7, 0.7];
+            colorName = [0.66, 0.66, 0.66];
           end
         end
 
-      %----------------------------------------
-      %       Slice and Quiver
-      %----------------------------------------
         if find(strcmp('colorrange',var))
           colorrange = var{ find(strcmp('colorrange',var))+1 };
         else
@@ -584,8 +811,14 @@ classdef batsUni < bats
           elseif plotType == 2
             mag = sqrt( obj.([variable,'x']).^2 + obj.([variable,'y']).^2 + obj.([variable,'z']).^2 );
             colorrange = [min(mag,[],'all') max(mag,[],'all')];
+          elseif plotType == 6
+            if find(strcmp('variable',var))
+              colorrange = [min(obj.(variable),[],'all') max(obj.(variable),[],'all')];
+            else
+              colorrange = [0 1];
+            end
           else
-            colorrange = [];
+            colorrange = [0 1];  % This does not matter as for streams and contours, I only have 1 color in the colormap
           end
         end
 
@@ -600,69 +833,62 @@ classdef batsUni < bats
           colorposition = [0.07 0.1105 0.0112 0.8143];
         end
       %----------------------------------------
-      %       Slice and Contour
+      %       Slice
       %----------------------------------------
-        if plotType == 1 | plotType == 3
-          if find(strcmp('xslice',var)), xslice = var{ find(strcmp('xslice',var))+1 };
-          else, xslice = [];
-          end
-          if find(strcmp('yslice',var)), yslice = var{ find(strcmp('yslice',var))+1 };
-          else, yslice = [];
-          end
-          if find(strcmp('zslice',var)), zslice = var{ find(strcmp('zslice',var))+1 };
-          else, zslice = [];
-          end
+        if find(strcmp('xslice',var)), xslice = var{ find(strcmp('xslice',var))+1 };
+        else, xslice = [];
+        end
+        if find(strcmp('yslice',var)), yslice = var{ find(strcmp('yslice',var))+1 };
+        else, yslice = [];
+        end
+        if find(strcmp('zslice',var)), zslice = var{ find(strcmp('zslice',var))+1 };
+        else, zslice = [];
+        end
+      %----------------------------------------
+      %      Domain, linear and dimensional indices
+      %----------------------------------------
+        if find(strcmp('xrange',var)), xrange = var{ find(strcmp('xrange',var))+1 };
+        else, xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
+        end
+        if find(strcmp('yrange',var)), yrange = var{ find(strcmp('yrange',var))+1 };
+        else, yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
+        end
+        if find(strcmp('zrange',var)), zrange = var{ find(strcmp('zrange',var))+1 };
+        else, zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
+        end
+        qIndices = obj.domainIndex('xrange',xrange,'yrange',yrange,'zrange',zrange);
+        ix = find( obj.x(:,1,1)>=xrange(1) & obj.x(:,1,1)<=xrange(end) );
+        iy = find( obj.y(1,:,1)>=yrange(1) & obj.y(1,:,1)<=yrange(end) );
+        iz = find( obj.z(1,1,:)>=zrange(1) & obj.z(1,1,:)<=zrange(end) );
+      %----------------------------------------
+      %      Line Prop
+      %----------------------------------------
+        if find(strcmp('linewidth',var)), LineWidth = var{ find(strcmp('linewidth',var))+1 };
+        else, LineWidth = 0.5;
+        end
+      %----------------------------------------
+      %      Levels (contour plots and isosurface)
+      %----------------------------------------
+        if find(strcmp('level',var)), level = var{ find(strcmp('level',var))+1 };
+        else, level = [];
+        end
+      %----------------------------------------
+      %      Stream
+      %----------------------------------------
+        if find(strcmp('start',var)), start = var{ find(strcmp('start',var))+1 };
+        else, start = [-20 0 0];
+        end
+      %----------------------------------------
+      %      Grid
+      %----------------------------------------
+        if find(strcmp('surface',var))
+          X = var{ find(strcmp('surface',var))+1 };
+          Y = var{ find(strcmp('surface',var))+2 };
+          Z = var{ find(strcmp('surface',var))+3 };
         else
-          xslice = [];
-          yslice = [];
-          zslice = [];
+          X = []; Y = []; Z = [];
         end
-      %----------------------------------------
-      %      Quiver and Contour
-      %----------------------------------------
-        if (plotType == 2 | plotType == 3)
-          % Domain
-          if find(strcmp('xrange',var)), xrange = var{ find(strcmp('xrange',var))+1 };
-          else, xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
-          end
-          if find(strcmp('yrange',var)), yrange = var{ find(strcmp('yrange',var))+1 };
-          else, yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
-          end
-          if find(strcmp('zrange',var)), zrange = var{ find(strcmp('zrange',var))+1 };
-          else, zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
-          end
-          qIndices = obj.domainIndex('xrange',xrange,'yrange',yrange,'zrange',zrange);
-        else
-          qIndices = [];
-        end
-      %----------------------------------------
-      %      Contour and Stream
-      %----------------------------------------
-        if (plotType == 3 | plotType == 4)
-          if find(strcmp('linewidth',var)), LineWidth = var{ find(strcmp('linewidth',var))+1 };
-          else, LineWidth = [];
-          end
-        else
-          LineWidth = [];
-        end
-      %----------------------------------------
-      %      Contour
-      %----------------------------------------
-        if plotType == 3
-          if find(strcmp('level',var)), contourLevel = var{ find(strcmp('level',var))+1 };
-          else, contourLevel = [];
-          end
-        else, contourLevel = [];
-        end
-      %----------------------------------------
-      %      Contour
-      %----------------------------------------
-        if plotType == 4
-          if find(strcmp('start',var)), start = var{ find(strcmp('start',var))+1 };
-          else, start = [-20 0 0];
-          end
-        else, start = [];
-        end
+
     end
     %--------------------------------------------------
     function setProperties(obj,ax,cb, ...
@@ -715,7 +941,6 @@ classdef batsUni < bats
       iz = find(obj.z >= zrange(1) & obj.z <= zrange(end));
       indices = intersect(ix,intersect(iy,iz));
     end
-
   end
   %--------------------------------------------------
 

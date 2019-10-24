@@ -126,7 +126,6 @@ classdef bats < handle
     %------------------------------------------------------------
     %   Modify the data in obj
     function obj = loadFields(obj,var)
-
       [data,info] = cdfread(obj.GlobalFile,'Variables',var,'ConvertEpochToDatenum',true,'CombineRecords',true);
 
       for i = 1 : numel(var)
