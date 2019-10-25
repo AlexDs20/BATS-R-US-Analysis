@@ -55,7 +55,7 @@ Now looking at uni.Output, you will see that it is a mesh rather than a list.
 
 3. Plot using uni.plot(ARGIN) (see 'help uni.plot' for more details)
 ```matlab
-uni.plot('newfigure', 'isosurface','isovariable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','variable','ux','color','jet');
+uni.plot('newfigure', 'isosurface','variable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','colorvariable','ux','color','jet');
 uni.plot('slice','variable','ux','yslice',0,'color','jet','colorposition','right','alpha',0.7);
 uni.plot('stream','variable','b','start',[-25 -7 0],'color',[1,0,1],'linewidth',2);
 ```
@@ -172,5 +172,5 @@ value (in R units)| COMPULSORY: cell size
 3. Plot
 
 ```matlab
-uni.plot('newfigure', 'isosurface','isovariable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','variable','ux','color','jet);
+uni.plot('newfigure', 'isosurface','variable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','colorvariable','ux','color','jet);
 ```

@@ -283,7 +283,7 @@ classdef batsUni < bats
       %     - 'surface'                                 plot any surface cutting the domain (user input a mesh)
       %     - 'isosurface'                              plot surface level of a certain quantity (e.g. bx = 0 to identify magnetotail neutral sheet)
       %     - 'variable', field                         the variable we want the plot/color of
-      %     - 'isovariable', field                      variable for which we want to find the isosurface
+      %     - 'colorvariable', field                    variable for which we want to give the color to the isosurface or the streamline
       %     - 'xlim', [min, max]                        Range of the x axis shown on the plot
       %     - 'ylim', [min, max]                        Range of the y axis shown on the plot
       %     - 'zlim', [min, max]                        Range of the z axis shown on the plot
@@ -315,8 +315,7 @@ classdef batsUni < bats
       %
       %       - The first plot MUST include 'newfigure'
       %       - A type of plot MUST always be given: 'slice', 'quiver', 'contour', 'stream', 'surface', 'isosurface'
-      %       - The ('variable',value) pair MUST always be given except for isosurface where it is optional.
-      %         For isosurface, the 'isovariable' is a MUST.
+      %       - The ('variable',value) pair MUST always be given.
       %
       %     Slice:
       %     -----
@@ -394,11 +393,11 @@ classdef batsUni < bats
       %     ----------
       %       MUST:
       %         - 'isosurface'
-      %         - 'isovariable', value    : field for which we want the surface
+      %         - 'variable', value       : field for which we want the surface
       %         - 'level', value          : value at which we want to show the fields' surface
       %
       %       Optional:
-      %         - 'variable', value       : Field for which we show the color on the isosurface
+      %         - 'colorvariable', value       : Field for which we show the color on the isosurface
       %         - 'color',value
       %         - 'alpha',value
       %         - 'colorrange',[min max]
@@ -425,18 +424,17 @@ classdef batsUni < bats
       %   Surface:
       %     % Get the surface you are interested in
       %     [Y,Z] = meshgrid([-10:0.15:10],[-10:0.15:10]);
-      %     myX = @(Y,Z)(- sqrt((5*Y.^2 + 10*Z.^2)) - 10 );
+      %     myX = @(Y,Z)(- sqrt((Y.^2 + Z.^2)) - 10 );
       %     X = myX(Y,Z);
       %     uni.plot('surface',X,Y,Z,'variable','ux','color','cool', 'colorrange',[-400 400],'xlim',[-60 20]);
       %
       %   Isosurface:
-      %     uni.plot('isosurface','isovariable','bx','level',0, ...
+      %     uni.plot('isosurface','variable','bx','level',0, ...
       %               'xrange',[-30 -10],'yrange',[-10 10],'alpha',0.7, ...
       %               'colorposition','right','variable','ux','color','jet');
       %
       %
       %     Add lighting stuff, so that it looks sick af!
-      %
       %
 
       % Check if we want a new figure
@@ -525,6 +523,19 @@ classdef batsUni < bats
           hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
                                   start(:,1), start(:,2), start(:,3)) );
           set(hp,'color',colorName,'LineWidth',LineWidth);
+
+          if find(strcmpi('colorvariable',varargin))
+            % Replace the streamplot by a surface plot. Interpolat the field along the field line
+            F = griddedInterpolant(x,y,x,double(obj.(ColorVariable)));
+            for j = numel(hp) : -1 : 1
+              xsl = hp.XData;
+              ysl = hp.YData;
+              zsl = hp.ZData;
+              fieldinterp = F(xsl,ysl,zsl);
+              hp(j) = surface([xsl;xsl],[ysl;ysl],[zsl;zsl],[fieldinterp;fieldinterp], ...
+                              'FaceColor','none','EdgeColor','interp','LineWidth',LineWidth);
+            end
+          end
         end
         if isempty(find(strcmpi('forward',varargin)))
           hp2 = streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
@@ -545,13 +556,13 @@ classdef batsUni < bats
         cb = colorbar(ax);
         cl = [variable,' [',obj.GlobalUnits.(variable),']'];
       elseif plotType == 6
-        IsoVariable = varargin{ find(strcmpi('isovariable',varargin))+1 };
+        ColorVariable = varargin{ find(strcmpi('colorvariable',varargin))+1 };
 
         [x,y,z] = meshgrid( double(unique(obj.x(ix,iy,iz))), ...
                   double(unique(obj.y(ix,iy,iz))),double(unique(obj.z(ix,iy,iz))));
-        IsoField = double(permute(obj.(IsoVariable)(ix,iy,iz),[2 1 3]));
-        if ~isempty(variable)
-          colorField = double(permute(obj.(variable)(ix,iy,iz),[2 1 3]));
+        IsoField = double(permute(obj.(variable)(ix,iy,iz),[2 1 3]));
+        if ~isempty(ColorVariable)
+          colorField = double(permute(obj.(ColorVariable)(ix,iy,iz),[2 1 3]));
           [faces,verts,colors] = isosurface(x,y,z,IsoField,level,colorField);
           hp = patch(ax, 'Vertices',verts,'Faces',faces,'FaceVertexCData',colors,...
                         'FaceColor','flat', 'EdgeColor','flat', 'EdgeColor','none','FaceAlpha',alpha);
@@ -559,7 +570,7 @@ classdef batsUni < bats
           isonormals(x,y,z,IsoField,hp);
           colormap(ax, colorName);
           cb = colorbar(ax);
-          cl = [variable,' [',obj.GlobalUnits.(variable),']'];
+          cl = [ColorVariable,' [',obj.GlobalUnits.(ColorVariable),']'];
         else
           hp = patch(ax, isosurface(x,y,z,IsoField,level));
           isonormals(x,y,z,IsoField,hp);
