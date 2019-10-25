@@ -1,7 +1,5 @@
 classdef batsUni < bats
-
   properties (Hidden, Access = protected)
-
     % Global
     GlobalCellSize
     GlobalXRange
@@ -16,7 +14,6 @@ classdef batsUni < bats
     GradPbx, GradPby, GradPbz, GradPb
     DivBBx, DivBBy, DivBBz, DivBB
     DivRhoUUx, DivRhoUUy, DivRhoUUz, DivRhoUU
-
   end
 
   methods
@@ -25,40 +22,40 @@ classdef batsUni < bats
     %----------------------------------------
     function obj = batsUni(varargin)
       obj = varargin{1}.copyObject(obj);
-      if find(strcmp('xrange',varargin))
-        xr = varargin{ find(strcmp('xrange',varargin))+1 };
+      if find(strcmpi('xrange',varargin))
+        xr = varargin{ find(strcmpi('xrange',varargin))+1 };
         obj.GlobalXRange = [min(xr,[],'all') max(xr,[],'all')];
       else
         obj.GlobalXRange = [min(obj.x,[],'all') max(obj.x,[],'all')];
       end
-      if find(strcmp('yrange',varargin))
-        yr = varargin{ find(strcmp('yrange',varargin))+1 };
+      if find(strcmpi('yrange',varargin))
+        yr = varargin{ find(strcmpi('yrange',varargin))+1 };
         obj.GlobalYRange = [min(yr,[],'all') max(yr,[],'all')];
       else
         obj.GlobalYRange = [min(obj.y,[],'all') max(obj.y,[],'all')];
       end
-      if find(strcmp('zrange',varargin))
-        zr = varargin{ find(strcmp('zrange',varargin))+1 };
+      if find(strcmpi('zrange',varargin))
+        zr = varargin{ find(strcmpi('zrange',varargin))+1 };
         obj.GlobalZRange = [min(zr,[],'all') max(zr,[],'all')];
       else
         obj.GlobalZRange = [min(obj.z,[],'all') max(obj.z,[],'all')];
       end
-      if find(strcmp('cellsize',varargin))
-        obj.GlobalCellSize = varargin{ find(strcmp('cellsize',varargin))+1 };
+      if find(strcmpi('cellsize',varargin))
+        obj.GlobalCellSize = varargin{ find(strcmpi('cellsize',varargin))+1 };
       else
         d = obj.x(2)-obj.x(1);
         if d == 0 d = obj.y(2)-obj.y(1); end
         if d == 0 d = obj.z(2)-obj.z(1); end
       end
-      if find(strcmp('interpolate',varargin))
-        obj.GlobalInterpolation = varargin{ find(strcmp('interpolate',varargin))+1 };
+      if find(strcmpi('interpolate',varargin))
+        obj.GlobalInterpolation = varargin{ find(strcmpi('interpolate',varargin))+1 };
       end
-      if find(strcmp('variables',varargin))
-        var = varargin{ find(strcmp('variables',varargin))+1 };
+      if find(strcmpi('variables',varargin))
+        var = varargin{ find(strcmpi('variables',varargin))+1 };
       end
 
       if isa(varargin{1},'bats') & ~isempty(obj.GlobalCellSize) ...
-                  & find(strcmp('variables',varargin)) & obj.GlobalInterpolation
+                  & find(strcmpi('variables',varargin)) & obj.GlobalInterpolation
 
         [x,y,z] = obj.toUniformGrid(varargin{1},obj.GlobalCellSize, var, ...
                       'xrange',obj.GlobalXRange,'yrange',obj.GlobalYRange, ...
@@ -86,16 +83,16 @@ classdef batsUni < bats
 
       mu0 = 4*pi*1e-7;
 
-      [vecx,vecy,vecz,vec] = obj.calc_curl('b');
+      % [vecx,vecy,vecz,vec] = obj.calc_curl('b');
 
-      obj.jx = 1e-3 * vecx / mu0;
-      obj.jy = 1e-3 * vecy / mu0;
-      obj.jz = 1e-3 * vecz / mu0;
+      % obj.jx = 1e-3 * vecx / mu0;
+      % obj.jy = 1e-3 * vecy / mu0;
+      % obj.jz = 1e-3 * vecz / mu0;
       obj.j = sqrt( obj.jx.^2 + obj.jy.^2 + obj.jz.^2 );
 
-      obj.GlobalUnits.jx = 'muA/m^2';
-      obj.GlobalUnits.jy = 'muA/m^2';
-      obj.GlobalUnits.jz = 'muA/m^2';
+      % obj.GlobalUnits.jx = 'muA/m^2';
+      % obj.GlobalUnits.jy = 'muA/m^2';
+      % obj.GlobalUnits.jz = 'muA/m^2';
       obj.GlobalUnits.j  = 'muA/m^2';
     end
     %----------------------------------------
@@ -127,24 +124,33 @@ classdef batsUni < bats
     %   Calculating Derivative based things
     %----------------------------------------
     function obj = calc_gradPb(obj)
-      [obj.GradPbx,obj.GradPby,obj.GradPbz,obj.GradPb] = ...
-                   obj.calc_grad('Pb');
+      [vecx,vecy,vecz,vec] = obj.calc_grad('Pb');
 
-      obj.GlobalUnits.GradPbx = 'nN/m^3';
-      obj.GlobalUnits.GradPby = 'nN/m^3';
-      obj.GlobalUnits.GradPbz = 'nN/m^3';
-      obj.GlobalUnits.GradPb  = 'nN/m^3';
+      obj.GradPbx = 1e6 * vecx;
+      obj.GradPby = 1e6 * vecy;
+      obj.GradPbz = 1e6 * vecz;
+      obj.GradPb  = 1e6 * vec;
+
+      obj.GlobalUnits.GradPbx = 'fN/m^3';
+      obj.GlobalUnits.GradPby = 'fN/m^3';
+      obj.GlobalUnits.GradPbz = 'fN/m^3';
+      obj.GlobalUnits.GradPb  = 'fN/m^3';
     end
     %----------------------------------------
     function obj = calc_gradP(obj)
-      [obj.GradPx,obj.GradPy,obj.GradPz,obj.GradP] = ...
-                   obj.calc_grad('p');
+      [vecx,vecy,vecz,vec] = obj.calc_grad('p');
 
-      obj.GlobalUnits.GradPx = 'nN/m^3';
-      obj.GlobalUnits.GradPy = 'nN/m^3';
-      obj.GlobalUnits.GradPz = 'nN/m^3';
-      obj.GlobalUnits.GradP  = 'nN/m^3';
+      obj.GradPx = 1e6 * vecx;
+      obj.GradPy = 1e6 * vecy;
+      obj.GradPz = 1e6 * vecz;
+      obj.GradP  = 1e6 * vec;
+
+      obj.GlobalUnits.GradPx = 'fN/m^3';
+      obj.GlobalUnits.GradPy = 'fN/m^3';
+      obj.GlobalUnits.GradPz = 'fN/m^3';
+      obj.GlobalUnits.GradP  = 'fN/m^3';
     end
+    %----------------------------------------
     function obj = calc_vorticity(obj)
       [vecx,vecy,vecz,vec] = obj.calc_curl('u');
 
@@ -171,54 +177,62 @@ classdef batsUni < bats
       % (1/mu0) * nT * nT /m
       % (1/(4*pi*1e-7)) * 1e-9 * nN/m^3
 
-      obj.DivBBx = vecx * 1e-9 / mu0;
-      obj.DivBBy = vecy * 1e-9 / mu0;
-      obj.DivBBz = vecz * 1e-9 / mu0;
-      obj.DivBB  = vec  * 1e-9 / mu0;
+      obj.DivBBx = vecx * 1e-3 / mu0;
+      obj.DivBBy = vecy * 1e-3 / mu0;
+      obj.DivBBz = vecz * 1e-3 / mu0;
+      obj.DivBB  = vec  * 1e-3 / mu0;
 
-      obj.GlobalUnits.DivBBx = 'nN/m^3';
-      obj.GlobalUnits.DivBBy = 'nN/m^3';
-      obj.GlobalUnits.DivBBz = 'nN/m^3';
-      obj.GlobalUnits.DivBB  = 'nN/m^3';
+      obj.GlobalUnits.DivBBx = 'fN/m^3';
+      obj.GlobalUnits.DivBBy = 'fN/m^3';
+      obj.GlobalUnits.DivBBz = 'fN/m^3';
+      obj.GlobalUnits.DivBB  = 'fN/m^3';
     end
     %----------------------------------------
     function obj = calc_divRhoUU(obj)
       [vecx,vecy,vecz,vec] = obj.calc_divTensor('rhoU','u');
 
       %    rhoU        u       div
-      % amu cm-2 s-1  km s-1    m-1
-      % mp(kg) *1e12 m^-2 s^-2
-      % mp(kg) * 1e16 * nN/m^3
+      % amu mum-2 s-1  km s-1    m-1
 
-      mp = 1.67262*1e-27;
+      mp = 1.67262*1e3;
 
-      obj.DivRhoUUx = mp * vecx * 1e16;
-      obj.DivRhoUUy = mp * vecy * 1e16;
-      obj.DivRhoUUz = mp * vecz * 1e16;
-      obj.DivRhoUU  = mp * vec  * 1e16;
+      obj.DivRhoUUx = mp * vecx ;
+      obj.DivRhoUUy = mp * vecy ;
+      obj.DivRhoUUz = mp * vecz ;
+      obj.DivRhoUU  = mp * vec  ;
 
-      obj.GlobalUnits.DivRhoUUx = 'nN/m^3';
-      obj.GlobalUnits.DivRhoUUy = 'nN/m^3';
-      obj.GlobalUnits.DivRhoUUz = 'nN/m^3';
-      obj.GlobalUnits.DivRhoUU  = 'nN/m^3';
+      obj.GlobalUnits.DivRhoUUx = 'fN/m^3';
+      obj.GlobalUnits.DivRhoUUy = 'fN/m^3';
+      obj.GlobalUnits.DivRhoUUz = 'fN/m^3';
+      obj.GlobalUnits.DivRhoUU  = 'fN/m^3';
+    end
+    %--------------------------------------------------
+    %     Calc all
+    function obj = calc_all(obj)
+      calc_all@bats(obj);
+      obj.calc_gradPb;
+      obj.calc_gradP;
+      obj.calc_vorticity;
+      obj.calc_divBB;
+      obj.calc_divRhoUU;
     end
     %----------------------------------------
     %     Reduce Domain
     %----------------------------------------
     function obj = reduceDomain(obj,varargin)
       % KWARGS: 'xrange', 'yrange' and 'zrange', otherwise
-      if find(strcmp('xrange',varargin))
-        xrange = varargin{ find(strcmp('xrange',varargin))+1 };
+      if find(strcmpi('xrange',varargin))
+        xrange = varargin{ find(strcmpi('xrange',varargin))+1 };
       else
         xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
       end
-      if find(strcmp('yrange',varargin))
-        yrange = varargin{ find(strcmp('yrange',varargin))+1 };
+      if find(strcmpi('yrange',varargin))
+        yrange = varargin{ find(strcmpi('yrange',varargin))+1 };
       else
         yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
       end
-      if find(strcmp('zrange',varargin))
-        zrange = varargin{ find(strcmp('zrange',varargin))+1 };
+      if find(strcmpi('zrange',varargin))
+        zrange = varargin{ find(strcmpi('zrange',varargin))+1 };
       else
         zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
       end
@@ -291,6 +305,7 @@ classdef batsUni < bats
       %     - 'backward'                                only follow the stream in the direction opposite to the field (if none of 'forward','backward' are given, stream in both directions)
       %%TBD - 'interp'
       %%TBD - 'fancylook'                               Make the plot sick as fuck!
+      %%TBD - 'increment',value                         Increment used for quiver plot to not plot all the vectors
       %
       %
       %   Which inputs are allowed?
@@ -330,6 +345,7 @@ classdef batsUni < bats
       %         - 'colorrange',values
       %         - 'linewidth',value
       %         - 'xrange','yrange','zrange' to only show the vectors in this sub-domain defined by these inputs
+      %         - 'increment',value     : integer number
       %         - 'colorposition'
       %
       %     Contour:
@@ -424,7 +440,7 @@ classdef batsUni < bats
       %
 
       % Check if we want a new figure
-      if find(strcmp('newfigure',varargin))
+      if find(strcmpi('newfigure',varargin))
         h = figure('Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
         visible = 'on';
         ax = axes(h);
@@ -443,7 +459,7 @@ classdef batsUni < bats
        xl, yl, zl, position, colorposition, ...
        colorName, alpha, colorrange, ...          % Several Types
        xslice, yslice, zslice, ...                % Slice and Contour
-       qIndices, ix, iy, iz, ...                  % Quiver
+       ix, iy, iz, increment, ...                  % Quiver
        level, LineWidth, ...               % Contour
        start, ...                                 % Stream
        X, Y, Z ...
@@ -462,14 +478,20 @@ classdef batsUni < bats
             );
         colormap(ax,colorName);
         cb = colorbar(ax);
+        %%TBD if find(strcmpi('log',varargin))
+        %%TBD   % set(hp,'CData',log10(hp.CData));
+        %%TBD   set(ax,'colorscale','log');
+        %%TBD   %cb.Ruler.Scale = 'log';
+        %%TBD   %cb.Ruler.MinorTick = 'on';
+        %%TBD end
         cl = [variable,' [',obj.GlobalUnits.(variable),']'];
       elseif plotType == 2
-        x = obj.x(qIndices);
-        y = obj.y(qIndices);
-        z = obj.z(qIndices);
-        fieldx = obj.([variable,'x'])(qIndices);
-        fieldy = obj.([variable,'y'])(qIndices);
-        fieldz = obj.([variable,'z'])(qIndices);
+        x = obj.x([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
+        y = obj.y([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
+        z = obj.z([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
+        fieldx = obj.([variable,'x'])([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
+        fieldy = obj.([variable,'y'])([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
+        fieldz = obj.([variable,'z'])([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
 
         hp = quiver3(ax, x,y,z, fieldx,fieldy,fieldz );
 
@@ -499,12 +521,12 @@ classdef batsUni < bats
         fieldy = double(permute(obj.([variable,'y'])(ix,iy,iz),[2 1 3]));
         fieldz = double(permute(obj.([variable,'z'])(ix,iy,iz),[2 1 3]));
 
-        if isempty(find(strcmp('backward',varargin)))
+        if isempty(find(strcmpi('backward',varargin)))
           hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
                                   start(:,1), start(:,2), start(:,3)) );
           set(hp,'color',colorName,'LineWidth',LineWidth);
         end
-        if isempty(find(strcmp('forward',varargin)))
+        if isempty(find(strcmpi('forward',varargin)))
           hp2 = streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
                                   start(:,1), start(:,2), start(:,3)) );
           set(hp2,'color',colorName,'LineWidth',LineWidth);
@@ -523,7 +545,7 @@ classdef batsUni < bats
         cb = colorbar(ax);
         cl = [variable,' [',obj.GlobalUnits.(variable),']'];
       elseif plotType == 6
-        IsoVariable = varargin{ find(strcmp('isovariable',varargin))+1 };
+        IsoVariable = varargin{ find(strcmpi('isovariable',varargin))+1 };
 
         [x,y,z] = meshgrid( double(unique(obj.x(ix,iy,iz))), ...
                   double(unique(obj.y(ix,iy,iz))),double(unique(obj.z(ix,iy,iz))));
@@ -556,7 +578,7 @@ classdef batsUni < bats
               cl,colorposition,colorrange);
 
     % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
-      if isempty(find(strcmp('newfigure',varargin)))
+      if isempty(find(strcmpi('newfigure',varargin)))
         % Linkaxes:
         Link = linkprop([ax; ax_prev],{'CameraUpVector', 'CameraPosition', 'CameraTarget', 'XLim', 'YLim', 'ZLim'});
         setappdata(h, 'StoreTheLink', Link);
@@ -761,87 +783,82 @@ classdef batsUni < bats
               xl, yl, zl, position, colorposition, ...
               colorName, alpha, colorrange, ...         % Several Types
               xslice, yslice, zslice, ...               % Slice
-              qIndices, ix, iy, iz, ...                 % Quiver
-              level, LineWidth, ...              % Contour
+              ix, iy, iz, increment ...       % Quiver
+              level, LineWidth, ...                     % Contour
               start, ...                                % Stream
               X, Y, Z ...                               % Surface
               ] ...
             = setInputValues(obj,var)
-
       %----------------------------------------
       %           GENERAL
-      %----------------------------------------
-        if find(strcmp('slice',var))
+        if find(strcmpi('slice',var))
           plotType = 1;
-        elseif find(strcmp('quiver',var))
+        elseif find(strcmpi('quiver',var))
           plotType = 2;
-        elseif find(strcmp('contour',var))
+        elseif find(strcmpi('contour',var))
           plotType = 3;
-        elseif find(strcmp('stream',var))
+        elseif find(strcmpi('stream',var))
           plotType = 4;
-        elseif find(strcmp('surface',var))
+        elseif find(strcmpi('surface',var))
           plotType = 5;
-        elseif find(strcmp('isosurface',var))
+        elseif find(strcmpi('isosurface',var))
           plotType = 6;
         end
 
-        if find(strcmp('variable',var))
-          variable = var{ find(strcmp('variable',var))+1 };
+        if find(strcmpi('variable',var))
+          variable = var{ find(strcmpi('variable',var))+1 };
         else
           variable = [];
         end
 
         ca = findall(gcf,'type','axes');
-        if find(strcmp('xlim',var))
-          xl = var{ find(strcmp('xlim',var))+1 };
+        if find(strcmpi('xlim',var))
+          xl = var{ find(strcmpi('xlim',var))+1 };
         else
-          if ~find(strcmp('newfigure',var))
+          if ~find(strcmpi('newfigure',var))
             xl = ca.XLim;
           else
             xl = obj.GlobalXRange;
           end
         end
-        if find(strcmp('ylim',var))
-          yl = var{ find(strcmp('ylim',var))+1 };
+        if find(strcmpi('ylim',var))
+          yl = var{ find(strcmpi('ylim',var))+1 };
         else
-          if ~find(strcmp('newfigure',var))
+          if ~find(strcmpi('newfigure',var))
             yl = ca.YLim;
           else
             yl = obj.GlobalYRange;
           end
         end
-        if find(strcmp('zlim',var))
-          zl = var{ find(strcmp('zlim',var))+1 };
+        if find(strcmpi('zlim',var))
+          zl = var{ find(strcmpi('zlim',var))+1 };
         else
-          if ~find(strcmp('newfigure',var))
+          if ~find(strcmpi('newfigure',var))
             zl = ca.ZLim;
           else
             zl = obj.GlobalZRange;
           end
         end
 
-        if find(strcmp('position',var))
-          position = var{ find(strcmp('position',var))+1 };
+        if find(strcmpi('position',var))
+          position = var{ find(strcmpi('position',var))+1 };
         else
           position = [0.126 0.11 0.7513 0.815];
         end
 
       %----------------------------------------
       %   May be common to different plots
-      %----------------------------------------
-        if find(strcmp('alpha',var))
-          alpha = var{ find(strcmp('alpha',var))+1 };
+        if find(strcmpi('alpha',var))
+          alpha = var{ find(strcmpi('alpha',var))+1 };
         else
           alpha = 1;
         end
 
         % INTERP
-
       %----------------------------------------
       %       Color
-      %----------------------------------------
-        if find(strcmp('color',var))
-          colorName = var{ find(strcmp('color',var))+1 };
+        if find(strcmpi('color',var))
+          colorName = var{ find(strcmpi('color',var))+1 };
         else
           if (plotType == 1 | plotType == 2 | plotType == 5 | plotType == 6)
             colorName = 'parula';
@@ -852,8 +869,8 @@ classdef batsUni < bats
           end
         end
 
-        if find(strcmp('colorrange',var))
-          colorrange = var{ find(strcmp('colorrange',var))+1 };
+        if find(strcmpi('colorrange',var))
+          colorrange = var{ find(strcmpi('colorrange',var))+1 };
         else
           if plotType == 1
             colorrange = [min(obj.(variable),[],'all') max(obj.(variable),[],'all')];
@@ -861,7 +878,7 @@ classdef batsUni < bats
             mag = sqrt( obj.([variable,'x']).^2 + obj.([variable,'y']).^2 + obj.([variable,'z']).^2 );
             colorrange = [min(mag,[],'all') max(mag,[],'all')];
           elseif plotType == 6
-            if find(strcmp('variable',var))
+            if find(strcmpi('variable',var))
               colorrange = [min(obj.(variable),[],'all') max(obj.(variable),[],'all')];
             else
               colorrange = [0 1];
@@ -871,11 +888,11 @@ classdef batsUni < bats
           end
         end
 
-        if find(strcmp('colorposition',var))
-          colorposition = var{ find(strcmp('colorposition',var))+1 };
-          if ischar(colorposition) & strcmp(colorposition,'left')
+        if find(strcmpi('colorposition',var))
+          colorposition = var{ find(strcmpi('colorposition',var))+1 };
+          if ischar(colorposition) & strcmpi(colorposition,'left')
             colorposition = [0.07 0.1105 0.0112 0.8143];
-          elseif ischar(colorposition) & strcmp(colorposition,'right')
+          elseif ischar(colorposition) & strcmpi(colorposition,'right')
             colorposition = [0.92 0.1105 0.0112 0.8143];
           end
         else
@@ -883,61 +900,60 @@ classdef batsUni < bats
         end
       %----------------------------------------
       %       Slice
-      %----------------------------------------
-        if find(strcmp('xslice',var)), xslice = var{ find(strcmp('xslice',var))+1 };
+        if find(strcmpi('xslice',var)), xslice = var{ find(strcmpi('xslice',var))+1 };
         else, xslice = [];
         end
-        if find(strcmp('yslice',var)), yslice = var{ find(strcmp('yslice',var))+1 };
+        if find(strcmpi('yslice',var)), yslice = var{ find(strcmpi('yslice',var))+1 };
         else, yslice = [];
         end
-        if find(strcmp('zslice',var)), zslice = var{ find(strcmp('zslice',var))+1 };
+        if find(strcmpi('zslice',var)), zslice = var{ find(strcmpi('zslice',var))+1 };
         else, zslice = [];
         end
       %----------------------------------------
       %      Domain, linear and dimensional indices
-      %----------------------------------------
-        if find(strcmp('xrange',var)), xrange = var{ find(strcmp('xrange',var))+1 };
+        if find(strcmpi('xrange',var)), xrange = var{ find(strcmpi('xrange',var))+1 };
         else, xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
         end
-        if find(strcmp('yrange',var)), yrange = var{ find(strcmp('yrange',var))+1 };
+        if find(strcmpi('yrange',var)), yrange = var{ find(strcmpi('yrange',var))+1 };
         else, yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
         end
-        if find(strcmp('zrange',var)), zrange = var{ find(strcmp('zrange',var))+1 };
+        if find(strcmpi('zrange',var)), zrange = var{ find(strcmpi('zrange',var))+1 };
         else, zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
         end
-        qIndices = obj.domainIndex('xrange',xrange,'yrange',yrange,'zrange',zrange);
         ix = find( obj.x(:,1,1)>=xrange(1) & obj.x(:,1,1)<=xrange(end) );
         iy = find( obj.y(1,:,1)>=yrange(1) & obj.y(1,:,1)<=yrange(end) );
         iz = find( obj.z(1,1,:)>=zrange(1) & obj.z(1,1,:)<=zrange(end) );
       %----------------------------------------
       %      Line Prop
-      %----------------------------------------
-        if find(strcmp('linewidth',var)), LineWidth = var{ find(strcmp('linewidth',var))+1 };
+        if find(strcmpi('linewidth',var)), LineWidth = var{ find(strcmpi('linewidth',var))+1 };
         else, LineWidth = 0.5;
         end
       %----------------------------------------
       %      Levels (contour plots and isosurface)
-      %----------------------------------------
-        if find(strcmp('level',var)), level = var{ find(strcmp('level',var))+1 };
+        if find(strcmpi('level',var)), level = var{ find(strcmpi('level',var))+1 };
         else, level = [];
         end
       %----------------------------------------
       %      Stream
-      %----------------------------------------
-        if find(strcmp('start',var)), start = var{ find(strcmp('start',var))+1 };
+        if find(strcmpi('start',var)), start = var{ find(strcmpi('start',var))+1 };
         else, start = [-20 0 0];
         end
       %----------------------------------------
       %      Grid
-      %----------------------------------------
-        if find(strcmp('surface',var))
-          X = var{ find(strcmp('surface',var))+1 };
-          Y = var{ find(strcmp('surface',var))+2 };
-          Z = var{ find(strcmp('surface',var))+3 };
+        if find(strcmpi('surface',var))
+          X = var{ find(strcmpi('surface',var))+1 };
+          Y = var{ find(strcmpi('surface',var))+2 };
+          Z = var{ find(strcmpi('surface',var))+3 };
         else
           X = []; Y = []; Z = [];
         end
-
+      %----------------------------------------
+      %      Quiver increment
+        if find(strcmpi('increment',var))
+          increment = var{ find(strcmpi('increment',var))+1 };
+        else
+          increment = 1;
+        end
     end
     %--------------------------------------------------
     function setProperties(obj,ax,cb, ...
@@ -969,18 +985,18 @@ classdef batsUni < bats
     %--------------------------------------------------
     function indices = domainIndex(obj,varargin)
       % KWARGS: 'xrange', 'yrange' and 'zrange', otherwise
-      if find(strcmp('xrange',varargin))
-        xrange = varargin{ find(strcmp('xrange',varargin))+1 };
+      if find(strcmpi('xrange',varargin))
+        xrange = varargin{ find(strcmpi('xrange',varargin))+1 };
       else
         xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
       end
-      if find(strcmp('yrange',varargin))
-        yrange = varargin{ find(strcmp('yrange',varargin))+1 };
+      if find(strcmpi('yrange',varargin))
+        yrange = varargin{ find(strcmpi('yrange',varargin))+1 };
       else
         yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
       end
-      if find(strcmp('zrange',varargin))
-        zrange = varargin{ find(strcmp('zrange',varargin))+1 };
+      if find(strcmpi('zrange',varargin))
+        zrange = varargin{ find(strcmpi('zrange',varargin))+1 };
       else
         zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
       end
@@ -1036,5 +1052,4 @@ classdef batsUni < bats
     end
   %--------------------------------------------------
   end
-
 end

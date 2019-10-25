@@ -284,20 +284,21 @@ classdef bats < handle
     end
     %------------------------------------------------------------
     function obj = calc_rhoU(obj)
+      % [rhoU]: amu \mum^-2 s-1
       if isempty(obj.ux)    obj.loadFields({'ux','uy','uz'});   end
       if isempty(obj.rho)   obj.loadFields('rho');              end
 
       %m = 1.6726*1e-27;
       m = 1;
-      obj.rhoUx = obj.rho.* obj.ux * 1e5 * m;
-      obj.rhoUy = obj.rho.* obj.uy * 1e5 * m;
-      obj.rhoUz = obj.rho.* obj.uz * 1e5 * m;
+      obj.rhoUx = obj.rho.* obj.ux * 1e-3 * m;
+      obj.rhoUy = obj.rho.* obj.uy * 1e-3 * m;
+      obj.rhoUz = obj.rho.* obj.uz * 1e-3 * m;
       obj.rhoU  = sqrt( obj.rhoUx.^2 + obj.rhoUy.^2 + obj.rhoUz.^2 );
 
-      obj.GlobalUnits.rhoUx = 'amu cm^-2 s^-1';
-      obj.GlobalUnits.rhoUy = 'amu cm^-2 s^-1';
-      obj.GlobalUnits.rhoUz = 'amu cm^-2 s^-1';
-      obj.GlobalUnits.rhoU  = 'amu cm^-2 s^-1';
+      obj.GlobalUnits.rhoUx = 'amu mu m^-2 s^-1';
+      obj.GlobalUnits.rhoUy = 'amu mu m^-2 s^-1';
+      obj.GlobalUnits.rhoUz = 'amu mu m^-2 s^-1';
+      obj.GlobalUnits.rhoU  = 'amu mu m^-2 s^-1';
     end
     %------------------------------------------------------------
     function obj = calc_j(obj)
@@ -310,20 +311,20 @@ classdef bats < handle
     function obj = calc_jxb(obj)
       % units:  [j]: muA/m^2
       %         [b]: nT
-      %         [jxb]: nN/m^3
+      %         [jxb]: fN/m^3
       if (isempty(obj.jx)|isempty(obj.ux))
         obj.loadFields({'jx','jy','jz','ux','uy','uz'});
       end
 
-      obj.jxbx = (obj.jy.*obj.bz - obj.jz.*obj.by)*1e-6;
-      obj.jxby = (obj.jz.*obj.bx - obj.jx.*obj.bz)*1e-6;
-      obj.jxbz = (obj.jx.*obj.by - obj.jy.*obj.bx)*1e-6;
+      obj.jxbx = (obj.jy.*obj.bz - obj.jz.*obj.by);
+      obj.jxby = (obj.jz.*obj.bx - obj.jx.*obj.bz);
+      obj.jxbz = (obj.jx.*obj.by - obj.jy.*obj.bx);
       obj.jxb  = sqrt( obj.jxbx.^2 + obj.jxby.^2 + obj.jxbz.^2 );
 
-      obj.GlobalUnits.jxbx = 'nN/m^3';
-      obj.GlobalUnits.jxby = 'nN/m^3';
-      obj.GlobalUnits.jxbz = 'nN/m^3';
-      obj.GlobalUnits.jxb  = 'nN/m^3';
+      obj.GlobalUnits.jxbx = 'fN/m^3';
+      obj.GlobalUnits.jxby = 'fN/m^3';
+      obj.GlobalUnits.jxbz = 'fN/m^3';
+      obj.GlobalUnits.jxb  = 'fN/m^3';
     end
     %------------------------------------------------------------
     function obj = calc_E(obj)
@@ -460,6 +461,11 @@ classdef bats < handle
       obj.Vey = obj.uy - 1e-15 * (mp/(mp+me))*obj.jy./(q*obj.rho);
       obj.Vez = obj.uz - 1e-15 * (mp/(mp+me))*obj.jz./(q*obj.rho);
       obj.Ve = sqrt( obj.Vex.^2 + obj.Vey.^2 + obj.Vez.^2 );
+
+      obj.GlobalUnits.Vex = 'km/s';
+      obj.GlobalUnits.Vey = 'km/s';
+      obj.GlobalUnits.Vez = 'km/s';
+      obj.GlobalUnits.Ve  = 'km/s';
     end
     %------------------------------------------------------------
     function calc_protonVelocity(obj)
@@ -483,6 +489,11 @@ classdef bats < handle
       obj.Viy = obj.uy + 1e-15 * (me/(mp+me))*obj.jy./(q*obj.rho);
       obj.Viz = obj.uz + 1e-15 * (me/(mp+me))*obj.jz./(q*obj.rho);
       obj.Vi = sqrt( obj.Vix.^2 + obj.Viy.^2 + obj.Viz.^2 );
+
+      obj.GlobalUnits.Vix = 'km/s';
+      obj.GlobalUnits.Viy = 'km/s';
+      obj.GlobalUnits.Viz = 'km/s';
+      obj.GlobalUnits.Vi  = 'km/s';
     end
     %------------------------------------------------------------
     %------------------------------------------------------------
