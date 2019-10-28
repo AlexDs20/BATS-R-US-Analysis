@@ -290,6 +290,7 @@ classdef batsUni < bats
       %     - 'xrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
       %     - 'yrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
       %     - 'zrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
+      %     - 'log'                                     If the colorbar should be in log scale
       %     - 'position', values                        Plot position in the figure
       %     - 'color',value                             color of the shown data. Either [R G B] for a single color plot (stream,contour,isosurface). Or a colormap (slice,quiver,stream,surface,isosurface)
       %     - 'alpha',value                             transparency: between [0,1]
@@ -325,6 +326,7 @@ classdef batsUni < bats
       %
       %       Optional:
       %         - 'color',value : can be a colormap string or [Nx3]
+      %         - 'log'
       %         - 'alpha',value
       %         - 'colorrange',values
       %         - 'xrange', 'yrange', 'zrange': to reduce the domain in which the slice is done
@@ -369,8 +371,9 @@ classdef batsUni < bats
       %
       %       Optional:
       %         - 'colorvariable'
-      %         - 'colorrange'        (together with 'colorvariable')
+      %         - 'colorrange'        (if 'colorvariable')
       %         - 'color' : [R G B]   (or a colormap when using 'colorvariable')
+      %         - 'log'               (if colorvariable)
       %         - 'linewidth',value
       %         - 'xrange','yrange','zrange'  : to only show part of the domain
       %         - 'colorposition'
@@ -383,6 +386,7 @@ classdef batsUni < bats
       %
       %       Optional:
       %         - 'color',value         : colormap name or [Nx3]
+      %         - 'log'
       %         - 'alpha',value
       %         - 'colorrange', [min max]
       %%TBD     - 'colorposition',value
@@ -397,6 +401,7 @@ classdef batsUni < bats
       %       Optional:
       %         - 'colorvariable', value       : Field for which we show the color on the isosurface
       %         - 'color',value
+      %         - 'log'
       %         - 'alpha',value
       %         - 'colorrange',[min max]
       %%TBD     - 'colorposition',value
@@ -451,7 +456,7 @@ classdef batsUni < bats
 
       %----------------------------------------
       %     TREAT INPUT
-      [plotType, variable, ...                    % GENERAL
+      [plotType, variable, islog, ...                    % GENERAL
        xl, yl, zl, position, colorposition, ...
        colorName, alpha, colorrange, ...          % Several Types
        xslice, yslice, zslice, ...                % Slice and Contour
@@ -519,14 +524,9 @@ classdef batsUni < bats
 
         hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
                                 start(:,1), start(:,2), start(:,3)) );
-        set(hp,'color',colorName(1,:),'LineWidth',LineWidth);
         hp2 = streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
                                 start(:,1), start(:,2), start(:,3)) );
-        set(hp2,'color',colorName(1,:),'LineWidth',LineWidth);
-        hp = [hp;hp2];
-        clear hp2;
-        cb = [];
-        cl = [];
+        hp = [hp;hp2]; clear hp2;
 
         if ~isempty(ColorVariable)
           % Replace the streamplot by a surface plot. Interpolat the field along the field line
@@ -541,9 +541,14 @@ classdef batsUni < bats
             hp(j) = surface(ax,[xsl;xsl],[ysl;ysl],[zsl;zsl],[fieldinterp;fieldinterp], ...
                             'FaceColor','none','EdgeColor','interp','LineWidth',LineWidth);
           end
+          colormap(ax,colorName);
           cb = colorbar(ax);
           cl = [variable,' [',obj.GlobalUnits.(ColorVariable),']'];
           delete(findall(ax,'type','Line'));
+        else
+          set(hp,'color',colorName(1,:),'LineWidth',LineWidth);
+          cb = [];
+          cl = [];
         end
       elseif plotType == 5  % Surface
         F = griddedInterpolant(obj.x,obj.y,obj.z,obj.(variable),'nearest');
@@ -582,7 +587,7 @@ classdef batsUni < bats
       end
 
       obj.setProperties(ax,cb,xl,yl,zl,position,visible, ...
-              cl,colorposition,colorrange);
+              islog,cl,colorposition,colorrange);
 
     % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
       if isempty(find(strcmpi('newfigure',varargin)))
@@ -591,7 +596,11 @@ classdef batsUni < bats
         setappdata(h, 'StoreTheLink', Link);
         if plotType == 1
           for j = 1 : numel(hp)
-            RGB = cmapping(hp(j).CData,colorName,colorrange);
+            if islog
+              RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
+            else
+              RGB = cmapping(hp(j).CData,colorName,colorrange);
+            end
             hpCopy = copyobj(hp(j),ax_prev(end));
             set(hpCopy,'CData',RGB);
             delete(hp(j));
@@ -611,20 +620,42 @@ classdef batsUni < bats
           end
           delete(ax);
         elseif plotType == 4
-          hpCopy = copyobj(hp,ax_prev(end));
-          delete(hp)
+          for j = 1 : numel(hp)
+            if ~isempty(ColorVariable)
+              if islog
+                RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
+              else
+                RGB = cmapping(hp(j).CData,colorName,colorrange);
+              end
+              hpCopy = copyobj(hp(j),ax_prev(end));
+              set(hpCopy,'CData',RGB);
+              delete(hp(j));
+            else
+              hpCopy = copyobj(hp(j),ax_prev(end));
+              delete(hp(j));
+            end
+          end
           if isempty(ColorVariable)
             delete(ax);
           end
         elseif plotType == 5
           for j = 1 : numel(hp)
-            RGB = cmapping(hp(j).CData,colorName,colorrange);
+            if islog
+              RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
+            else
+              RGB = cmapping(hp(j).CData,colorName,colorrange);
+            end
             hpCopy = copyobj(hp(j),ax_prev(end));
             set(hpCopy,'CData',RGB);
             delete(hp(j));
           end
         elseif plotType == 6
-          if ~isempty(variable)
+          if ~isempty(colorvariable)
+            if islog
+              RGB = cmapping(log10(hp.FaceVertexCData),colorName,log10(colorrange));
+            else
+              RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
+            end
             RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
             hpCopy = copyobj(hp,ax_prev(end));
             set(hpCopy,'FaceVertexCData',RGB);
@@ -638,7 +669,11 @@ classdef batsUni < bats
         % Change to real colors
         if plotType == 1 || plotType == 5 || (plotType == 4 & ~isempty(ColorVariable))
           for j = 1 : numel(hp)
-            RGB = cmapping(hp(j).CData,colorName,colorrange);
+            if islog
+              RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
+            else
+              RGB = cmapping(hp(j).CData,colorName,colorrange);
+            end
             set(hp(j),'CData',RGB);
           end
         elseif plotType == 3
@@ -650,7 +685,11 @@ classdef batsUni < bats
           set(hp(j),'CData',C);
         elseif plotType == 6
           if ~isempty(variable)
-            RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
+            if islog
+              RGB = cmapping(log10(hp.FaceVertexCData),colorName,log10(colorrange));
+            else
+              RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
+            end
             set(hp,'FaceVertexCData',RGB);
           end
         end
@@ -782,7 +821,7 @@ classdef batsUni < bats
     %--------------------------------------------------
     %     Plot stuff
     %--------------------------------------------------
-    function [plotType, variable, ...                   % GENERAL
+    function [plotType, variable, islog, ...                   % GENERAL
               xl, yl, zl, position, colorposition, ...
               colorName, alpha, colorrange, ...         % Several Types
               xslice, yslice, zslice, ...               % Slice
@@ -847,6 +886,12 @@ classdef batsUni < bats
           position = var{ find(strcmpi('position',var))+1 };
         else
           position = [0.126 0.11 0.7513 0.815];
+        end
+
+        if find(strcmpi('log',var))
+          islog = 1;
+        else
+          islog = 0;
         end
 
       %----------------------------------------
@@ -967,7 +1012,7 @@ classdef batsUni < bats
     function setProperties(obj,ax,cb, ...
               xl, yl, zl, position, ...
               visible, ...
-              cl,colorposition,colorrange)
+              islog, cl,colorposition,colorrange)
       set(ax, ...
           'XLim', xl, 'YLim', yl, 'ZLim', zl, ...
           'Units','Normalized', ...
@@ -979,6 +1024,10 @@ classdef batsUni < bats
       xlabel(ax, ['X [', obj.GlobalUnits.x,']'] );
       ylabel(ax, ['Y [', obj.GlobalUnits.y,']'] );
       zlabel(ax, ['Z [', obj.GlobalUnits.z,']'] );
+
+      if islog
+        set(ax,'colorscale','log');
+      end
 
       % Colorbar stuff
       if ~isempty(cb)
