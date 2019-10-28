@@ -5,4 +5,4 @@
 
 load('/home/spiegel/Desktop/Programs/SWMF/data/uni.mat');
 
-
+uni.plot('newfigure','quiver','zrange',0,'variable','u','increment',3)

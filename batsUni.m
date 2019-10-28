@@ -291,7 +291,7 @@ classdef batsUni < bats
       %     - 'yrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
       %     - 'zrange', [min max]                       Range of data to consider for the plot (this allows to plot reduced domain)
       %     - 'position', values                        Plot position in the figure
-      %     - 'color',value                             color of the shown data. Either [R G B] for a single color plot (stream,contour,isosurface). Or a colormap (slice,quiver,surface,isosurface)
+      %     - 'color',value                             color of the shown data. Either [R G B] for a single color plot (stream,contour,isosurface). Or a colormap (slice,quiver,stream,surface,isosurface)
       %     - 'alpha',value                             transparency: between [0,1]
       %%TBD - 'colorposition',value                     Position of the colorbar/label of the ploted quantity
       %     - 'colorrange', [min max]                   range to use for the colorbar
@@ -300,12 +300,10 @@ classdef batsUni < bats
       %     - 'zslice', value(s)                        value at which we want to do the cut(s)
       %     - 'linewidth',value                         width of the line to show
       %     - 'level', value                            value at which we want equal value of the variable (contour,isosurface)
-      %     - 'start', [x,y,z]                          starting position for the stream
-      %     - 'forward'                                 only follow the stream along the field
-      %     - 'backward'                                only follow the stream in the direction opposite to the field (if none of 'forward','backward' are given, stream in both directions)
+      %     - 'start', [x,y,z]                          starting position for the streams
+      %     - 'increment',value                         (integer) Increment used for quiver plot to not plot all the vectors
       %%TBD - 'interp'
       %%TBD - 'fancylook'                               Make the plot sick as fuck!
-      %%TBD - 'increment',value                         Increment used for quiver plot to not plot all the vectors
       %
       %
       %   Which inputs are allowed?
@@ -370,10 +368,10 @@ classdef batsUni < bats
       %         - 'start',values        : [x,y,z] position at which we start the streamline
       %
       %       Optional:
-      %         - 'color',value : [R G B]
+      %         - 'colorvariable'
+      %         - 'colorrange'        (together with 'colorvariable')
+      %         - 'color' : [R G B]   (or a colormap when using 'colorvariable')
       %         - 'linewidth',value
-      %         - 'forward'             : to only show along the field
-      %         - 'backward'            : to only show anti-parallel to the field
       %         - 'xrange','yrange','zrange'  : to only show part of the domain
       %         - 'colorposition'
       %
@@ -418,8 +416,8 @@ classdef batsUni < bats
       %     uni.plot('contour','variable','bz','zslice',0,'color',[1 0 0]);
       %
       %   Stream:
-      %     uni.plot('stream','variable','b','start',[-25 0 0],'color',[0 1 0],'linewidth',2,'forward', ...
-      %               'xrange',[-30, -10]);
+      %     uni.plot('stream','variable','b','start',[-25 0 0],'color',[0 1 0], ...
+      %             'colorvariable','b','linewidth',2,'xrange',[-30, -10]);
       %
       %   Surface:
       %     % Get the surface you are interested in
@@ -459,13 +457,13 @@ classdef batsUni < bats
        xslice, yslice, zslice, ...                % Slice and Contour
        ix, iy, iz, increment, ...                  % Quiver
        level, LineWidth, ...               % Contour
-       start, ...                                 % Stream
+       start, ColorVariable, ...                                 % Stream
        X, Y, Z ...
        ] ...
         = obj.setInputValues(varargin(:));
 
 
-      if plotType == 1
+      if plotType == 1  % Slice
         [x,y,z] = meshgrid(unique(obj.x(ix,iy,iz)),unique(obj.y(ix,iy,iz)),unique(obj.z(ix,iy,iz)));
         field = permute(obj.(variable)(ix,iy,iz),[2 1 3]);
 
@@ -483,7 +481,7 @@ classdef batsUni < bats
         %%TBD   %cb.Ruler.MinorTick = 'on';
         %%TBD end
         cl = [variable,' [',obj.GlobalUnits.(variable),']'];
-      elseif plotType == 2
+      elseif plotType == 2  % Quiver
         x = obj.x([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
         y = obj.y([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
         z = obj.z([ix(1):increment:ix(end)],[iy(1):increment:iy(end)],[iz(1):increment:iz(end)]);
@@ -502,7 +500,7 @@ classdef batsUni < bats
         cl = [variable,' [',obj.GlobalUnits.([variable,'x']),']'];
 
         % SetLength?
-      elseif plotType == 3
+      elseif plotType == 3  % Contour
         [x,y,z] = meshgrid(unique(obj.x(ix,iy,iz)),unique(obj.y(ix,iy,iz)),unique(obj.z(ix,iy,iz)));
         field = permute(obj.(variable)(ix,iy,iz),[2 1 3]);
         hp = contourslice(ax, x,y,z, field, single(xslice),single(yslice),single(zslice), ...
@@ -512,40 +510,42 @@ classdef batsUni < bats
 
         cb = [];
         cl = [];
-      elseif plotType == 4
+      elseif plotType == 4  % Stream
         [x,y,z] = meshgrid( double(unique(obj.x(ix,iy,iz))), ...
                   double(unique(obj.y(ix,iy,iz))),double(unique(obj.z(ix,iy,iz))));
         fieldx = double(permute(obj.([variable,'x'])(ix,iy,iz),[2 1 3]));
         fieldy = double(permute(obj.([variable,'y'])(ix,iy,iz),[2 1 3]));
         fieldz = double(permute(obj.([variable,'z'])(ix,iy,iz),[2 1 3]));
 
-        if isempty(find(strcmpi('backward',varargin)))
-          hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
-                                  start(:,1), start(:,2), start(:,3)) );
-          set(hp,'color',colorName,'LineWidth',LineWidth);
-
-          if find(strcmpi('colorvariable',varargin))
-            % Replace the streamplot by a surface plot. Interpolat the field along the field line
-            F = griddedInterpolant(x,y,x,double(obj.(ColorVariable)));
-            for j = numel(hp) : -1 : 1
-              xsl = hp.XData;
-              ysl = hp.YData;
-              zsl = hp.ZData;
-              fieldinterp = F(xsl,ysl,zsl);
-              hp(j) = surface([xsl;xsl],[ysl;ysl],[zsl;zsl],[fieldinterp;fieldinterp], ...
-                              'FaceColor','none','EdgeColor','interp','LineWidth',LineWidth);
-            end
-          end
-        end
-        if isempty(find(strcmpi('forward',varargin)))
-          hp2 = streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
-                                  start(:,1), start(:,2), start(:,3)) );
-          set(hp2,'color',colorName,'LineWidth',LineWidth);
-        end
-
+        hp = streamline(ax, stream3(x,y,z, fieldx,fieldy, fieldz, ...
+                                start(:,1), start(:,2), start(:,3)) );
+        set(hp,'color',colorName(1,:),'LineWidth',LineWidth);
+        hp2 = streamline(ax, stream3(x,y,z, -fieldx,-fieldy,-fieldz, ...
+                                start(:,1), start(:,2), start(:,3)) );
+        set(hp2,'color',colorName(1,:),'LineWidth',LineWidth);
+        hp = [hp;hp2];
+        clear hp2;
         cb = [];
         cl = [];
-      elseif plotType == 5
+
+        if ~isempty(ColorVariable)
+          % Replace the streamplot by a surface plot. Interpolat the field along the field line
+          F = griddedInterpolant(obj.x(ix,iy,iz),...
+                      obj.y(ix,iy,iz),obj.z(ix,iy,iz), ...
+                      double(obj.(ColorVariable)(ix,iy,iz)));
+          for j = numel(hp) : -1 : 1
+            xsl = hp(j).XData;
+            ysl = hp(j).YData;
+            zsl = hp(j).ZData;
+            fieldinterp = F(xsl,ysl,zsl);
+            hp(j) = surface(ax,[xsl;xsl],[ysl;ysl],[zsl;zsl],[fieldinterp;fieldinterp], ...
+                            'FaceColor','none','EdgeColor','interp','LineWidth',LineWidth);
+          end
+          cb = colorbar(ax);
+          cl = [variable,' [',obj.GlobalUnits.(ColorVariable),']'];
+          delete(findall(ax,'type','Line'));
+        end
+      elseif plotType == 5  % Surface
         F = griddedInterpolant(obj.x,obj.y,obj.z,obj.(variable),'nearest');
         field = F(X,Y,Z);
 
@@ -555,18 +555,16 @@ classdef batsUni < bats
         colormap(ax,colorName);
         cb = colorbar(ax);
         cl = [variable,' [',obj.GlobalUnits.(variable),']'];
-      elseif plotType == 6
-        ColorVariable = varargin{ find(strcmpi('colorvariable',varargin))+1 };
-
+      elseif plotType == 6  % Isosurface
         [x,y,z] = meshgrid( double(unique(obj.x(ix,iy,iz))), ...
                   double(unique(obj.y(ix,iy,iz))),double(unique(obj.z(ix,iy,iz))));
         IsoField = double(permute(obj.(variable)(ix,iy,iz),[2 1 3]));
+
         if ~isempty(ColorVariable)
           colorField = double(permute(obj.(ColorVariable)(ix,iy,iz),[2 1 3]));
           [faces,verts,colors] = isosurface(x,y,z,IsoField,level,colorField);
           hp = patch(ax, 'Vertices',verts,'Faces',faces,'FaceVertexCData',colors,...
                         'FaceColor','flat', 'EdgeColor','flat', 'EdgeColor','none','FaceAlpha',alpha);
-                      %'FaceColor','interp','EdgeColor','interp');
           isonormals(x,y,z,IsoField,hp);
           colormap(ax, colorName);
           cb = colorbar(ax);
@@ -575,12 +573,10 @@ classdef batsUni < bats
           hp = patch(ax, isosurface(x,y,z,IsoField,level));
           isonormals(x,y,z,IsoField,hp);
           set(hp, 'FaceColor',colorName, 'EdgeColor','none','FaceAlpha',alpha);
-
           cb = []; cl = [];
         end
         %camlight
         %lighting gouraud
-
       else
         cb = []; cl = [];
       end
@@ -615,15 +611,11 @@ classdef batsUni < bats
           end
           delete(ax);
         elseif plotType == 4
-          if exist('hp')
-            hpCopy = copyobj(hp,ax_prev(end));
-            delete(hp)
+          hpCopy = copyobj(hp,ax_prev(end));
+          delete(hp)
+          if isempty(ColorVariable)
+            delete(ax);
           end
-          if exist('hp2')
-            hpCopy = copyobj(hp2,ax_prev(end));
-            delete(hp2)
-          end
-          delete(ax);
         elseif plotType == 5
           for j = 1 : numel(hp)
             RGB = cmapping(hp(j).CData,colorName,colorrange);
@@ -644,18 +636,18 @@ classdef batsUni < bats
         end
       else
         % Change to real colors
-        if plotType == 1 || plotType == 5
+        if plotType == 1 || plotType == 5 || (plotType == 4 & ~isempty(ColorVariable))
           for j = 1 : numel(hp)
             RGB = cmapping(hp(j).CData,colorName,colorrange);
             set(hp(j),'CData',RGB);
           end
         elseif plotType == 3
-            C = ones([size(hp(j).CData),3]);
-            C(:,:,1) = colorName(1).*C(:,:,1);
-            C(:,:,2) = colorName(2).*C(:,:,2);
-            C(:,:,3) = colorName(3).*C(:,:,3);
-            C(3,:,:) = NaN;
-            set(hp(j),'CData',C);
+          C = ones([size(hp(j).CData),3]);
+          C(:,:,1) = colorName(1).*C(:,:,1);
+          C(:,:,2) = colorName(2).*C(:,:,2);
+          C(:,:,3) = colorName(3).*C(:,:,3);
+          C(3,:,:) = NaN;
+          set(hp(j),'CData',C);
         elseif plotType == 6
           if ~isempty(variable)
             RGB = cmapping(hp.FaceVertexCData,colorName,colorrange);
@@ -796,7 +788,7 @@ classdef batsUni < bats
               xslice, yslice, zslice, ...               % Slice
               ix, iy, iz, increment ...       % Quiver
               level, LineWidth, ...                     % Contour
-              start, ...                                % Stream
+              start, ColorVariable, ...                                % Stream
               X, Y, Z ...                               % Surface
               ] ...
             = setInputValues(obj,var)
@@ -864,51 +856,6 @@ classdef batsUni < bats
         else
           alpha = 1;
         end
-
-        % INTERP
-      %----------------------------------------
-      %       Color
-        if find(strcmpi('color',var))
-          colorName = var{ find(strcmpi('color',var))+1 };
-        else
-          if (plotType == 1 | plotType == 2 | plotType == 5 | plotType == 6)
-            colorName = 'parula';
-          elseif plotType == 3
-            colorName = [1 0 1];
-          elseif plotType == 4
-            colorName = [0.66, 0.66, 0.66];
-          end
-        end
-
-        if find(strcmpi('colorrange',var))
-          colorrange = var{ find(strcmpi('colorrange',var))+1 };
-        else
-          if plotType == 1
-            colorrange = [min(obj.(variable),[],'all') max(obj.(variable),[],'all')];
-          elseif plotType == 2
-            mag = sqrt( obj.([variable,'x']).^2 + obj.([variable,'y']).^2 + obj.([variable,'z']).^2 );
-            colorrange = [min(mag,[],'all') max(mag,[],'all')];
-          elseif plotType == 6
-            if find(strcmpi('variable',var))
-              colorrange = [min(obj.(variable),[],'all') max(obj.(variable),[],'all')];
-            else
-              colorrange = [0 1];
-            end
-          else
-            colorrange = [0 1];  % This does not matter as for streams and contours, I only have 1 color in the colormap
-          end
-        end
-
-        if find(strcmpi('colorposition',var))
-          colorposition = var{ find(strcmpi('colorposition',var))+1 };
-          if ischar(colorposition) & strcmpi(colorposition,'left')
-            colorposition = [0.07 0.1105 0.0112 0.8143];
-          elseif ischar(colorposition) & strcmpi(colorposition,'right')
-            colorposition = [0.92 0.1105 0.0112 0.8143];
-          end
-        else
-          colorposition = [0.07 0.1105 0.0112 0.8143];
-        end
       %----------------------------------------
       %       Slice
         if find(strcmpi('xslice',var)), xslice = var{ find(strcmpi('xslice',var))+1 };
@@ -934,6 +881,56 @@ classdef batsUni < bats
         ix = find( obj.x(:,1,1)>=xrange(1) & obj.x(:,1,1)<=xrange(end) );
         iy = find( obj.y(1,:,1)>=yrange(1) & obj.y(1,:,1)<=yrange(end) );
         iz = find( obj.z(1,1,:)>=zrange(1) & obj.z(1,1,:)<=zrange(end) );
+      %----------------------------------------
+      %       Color
+        if find(strcmpi('color',var))
+          colorName = var{ find(strcmpi('color',var))+1 };
+        else
+          if (plotType == 1 | plotType == 2 | plotType == 5 | plotType == 6 | ...
+             (plotType == 4 & ~isempty(find(strcmpi('colorvariable',var)))) )
+            colorName = parula;
+          elseif plotType == 3
+            colorName = [1 0 1];
+          elseif plotType == 4
+            colorName = [0.66, 0.66, 0.66];
+          end
+        end
+
+        if find(strcmpi('colorrange',var))
+          colorrange = var{ find(strcmpi('colorrange',var))+1 };
+        else
+          if plotType == 1
+            colorrange = [min(obj.(variable)(ix,iy,iz),[],'all') max(obj.(variable)(ix,iy,iz),[],'all')];
+          elseif plotType == 2
+            mag = sqrt( obj.([variable,'x']).^2 + obj.([variable,'y']).^2 + obj.([variable,'z']).^2 );
+            colorrange = [min(mag(ix,iy,iz),[],'all') max(mag(ix,iy,iz),[],'all')];
+          elseif plotType == 4 | plotType == 6
+            if find(strcmpi('colorvariable',var))
+              colorrange = [min(obj.(variable)(ix,iy,iz),[],'all') max(obj.(variable)(ix,iy,iz),[],'all')];
+            else
+              colorrange = [0 1];
+            end
+          else
+            colorrange = [0 1];  % This does not matter as for streams and contours, I only have 1 color in the colormap
+          end
+        end
+
+        if find(strcmpi('colorposition',var))
+          colorposition = var{ find(strcmpi('colorposition',var))+1 };
+          if ischar(colorposition) & strcmpi(colorposition,'left')
+            colorposition = [0.07 0.1105 0.0112 0.8143];
+          elseif ischar(colorposition) & strcmpi(colorposition,'right')
+            colorposition = [0.92 0.1105 0.0112 0.8143];
+          end
+        else
+          colorposition = [0.07 0.1105 0.0112 0.8143];
+        end
+
+        if find(strcmpi('colorvariable',var))
+          ColorVariable = var{ find(strcmpi('colorvariable',var))+1 };
+        else
+          ColorVariable = [];
+        end
       %----------------------------------------
       %      Line Prop
         if find(strcmpi('linewidth',var)), LineWidth = var{ find(strcmpi('linewidth',var))+1 };
