@@ -5,4 +5,12 @@
 
 load('/home/spiegel/Desktop/Programs/SWMF/data/uni.mat');
 
-uni.plot('newfigure','quiver','zrange',0,'variable','u','increment',3)
+uni.plot('newfigure','slice','xslice',-40,'variable','p','log','colorrange',[2e-2 1e-1],'color','jet','alpha',0.7);
+
+uni.plot('isosurface','variable','bx','level',0,'colorvariable','bz','colorrange',[-2 14],'color','parula', 'colorposition','right','xrange',[-40 -1],'zrange',[-3 3],'alpha',0.7);
+
+uni.plot('slice','yslice',0,'variable','ux','colorrange',[-300 300],'color','autumn','alpha',0.7);
+
+uni.plot('stream','variable','b','start',[-10.38 -2.75 0; -5.38 -2.75 0; -30.38 -2.75 0],'LineWidth',2);
+
+uni.plotEarth;

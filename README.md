@@ -33,27 +33,35 @@ The color on the surface may be requested to be that of a field.
 - [ ] Lighting to make the figure sick af!
 - [ ] Documentation
 - [ ] Good handling of the colorbars positions
-- [ ] All for reading inputs that are directly in mesh format (this would extend
-the use of this code beyond BATS-R-US).
+- [ ] Implement a "plot Earth" (with nice texture)
+- [ ] Find last closed field lines
+- [ ] Quiver: log color scale and length/head angle properties
+- [ ] "Fancy look"
 
-## Quick start:
-This example will reproduce the plot shown on this page.
+## Quick start/General use:
+In general, you don't want to do anything with the bats class as it does not
+allow for plotting.
+Just use it to load the data and change to batsUni class.
+This will interpolate the data to the grid requested by the user.
+Just interpolate the fields that are output by the run and calculate the rest
+after the interpolation to gain time.
+Now that you have a uniBats object, feel free to calculate a quantity and plot
+it.
 
-1. Load the output data:
+**1. Load the data:**
 ```matlab
 data = bats('file',string_to_cdf_file);
 ```
-
-2. Convert (interpolate) some variables (var) to a grid of a certain cell-size,
-in a certain range (the range is optional)
+**2. Convert to uniform grid**
 ```matlab
 uni = data.toBatsUni(0.125,{'bx','by','bz','ux','uy','uz','jx','jy','jz','rho','p'}, ...
                 'xrange',[-40 0],'yrange',[-15 15],'zrange',[-15 15]);
 ```
-
 Now looking at uni.Output, you will see that it is a mesh rather than a list.
 
-3. Plot using uni.plot(ARGIN) (see 'help uni.plot' for more details)
+**3. Plot**
+Looking at uni.Output and uni.Derived gives you the name of the variables to
+plot.
 ```matlab
 uni.plot('newfigure', 'isosurface','variable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','colorvariable','ux','color','jet');
 uni.plot('slice','variable','ux','yslice',0,'color','jet','colorposition','right','alpha',0.7);
@@ -61,7 +69,12 @@ uni.plot('stream','variable','b','start',[-25 -7 0],'color',[1,0,1],'linewidth',
 ```
 
 Other plots are possible by calling uni.plot('plottype') with plottype:
-slice/quiver/contour/stream/surface/isosurface
+slice/quiver/contour/stream/surface/isosurface.
+
+Check the extensive help for the plot function:
+```matlab
+help batsUni.plot
+```
 
 ## List-form class: bats
 The only thing this class can do is read a cdf file, calculate a bunch of physical quantities (see table below) and create a batsUni object (see below).

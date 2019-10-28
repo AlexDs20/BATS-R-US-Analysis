@@ -303,7 +303,6 @@ classdef batsUni < bats
       %     - 'level', value                            value at which we want equal value of the variable (contour,isosurface)
       %     - 'start', [x,y,z]                          starting position for the streams
       %     - 'increment',value                         (integer) Increment used for quiver plot to not plot all the vectors
-      %%TBD - 'interp'
       %%TBD - 'fancylook'                               Make the plot sick as fuck!
       %
       %
@@ -365,7 +364,7 @@ classdef batsUni < bats
       %     Stream:
       %     ------
       %       MUST:
-      %         - 'contour'
+      %         - 'stream'
       %         - 'variable',value      : of a vector field e.g. 'u', 'j', ...
       %         - 'start',values        : [x,y,z] position at which we start the streamline
       %
@@ -650,7 +649,7 @@ classdef batsUni < bats
             delete(hp(j));
           end
         elseif plotType == 6
-          if ~isempty(colorvariable)
+          if ~isempty(ColorVariable)
             if islog
               RGB = cmapping(log10(hp.FaceVertexCData),colorName,log10(colorrange));
             else
@@ -703,6 +702,39 @@ classdef batsUni < bats
     end
   end
   %--------------------------------------------------
+
+  methods (Static)
+    function h = plotEarth(varargin)
+      %
+      % Tool to plot an Earth
+      %
+      % Inputs: 'newfigure'
+
+      if find(strcmpi('newfigure',varargin))
+        h = figure('Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
+        ax = axes(h);
+      else
+        h = gcf;
+        ax_prev = findall(h,'type','axes');
+        ax = copyobj(ax_prev(end),h);
+        delete(get(ax,'Children'));
+      end
+
+      [x,y,z] = sphere(50);
+      c = zeros([size(x),3]);
+      IDay = find(x>=0);
+      [ix,iy] = ind2sub(size(x),IDay);
+      c(IDay) = 1;
+      c(numel(x)+IDay) = 1;
+
+      hp = surface(ax,x,y,z,c,'EdgeColor','none');
+
+      if isempty(find(strcmpi('newfigure',varargin)))
+        hpCopy = copyobj(hp,ax_prev(end));
+        delete(ax);
+      end
+    end
+  end
 
   %--------------------------------------------------
   methods (Hidden, Access = private)
@@ -1027,6 +1059,8 @@ classdef batsUni < bats
 
       if islog
         set(ax,'colorscale','log');
+      else
+        set(ax,'colorscale','lin');
       end
 
       % Colorbar stuff
