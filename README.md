@@ -2,13 +2,14 @@
 
 ## Example of output:
 
-![The neutral sheet is shown by asking to plot an isosurface of bx=0. One this
-surface, we use colors to show the plasma velocity along X (ux). We also show ux at y=0. And, for illustration we show a magnetic field line.](snapshots/sample.png)
+![The neutral sheet is shown by asking to plot an isosurface of bx=0. On this surface, we use colors to show the plasma velocity along X (ux). We also show ux at y=0. And, for illustration we show a magnetic field line.](snapshots/sample.png)
 
 ## Warning
-Working but in development.
+Working but in development.\
+Can only treat single species run at the moment.\
 Documentation and error handling is minimalist/non-existent.
 Only the plot function has documentation and examples.
+
 
 ## What is implemented:
 
@@ -30,6 +31,7 @@ The color on the surface may be requested to be that of a field.
 ## What is *not* implemented:
 - [ ] Quiver plot on a surface given by the user
 - [ ] Quiver plot on the isosurface
+- [ ] Extend to allow beyond single species runs
 - [ ] Lighting to make the figure sick af!
 - [ ] Documentation
 - [ ] Good handling of the colorbars positions
@@ -37,15 +39,20 @@ The color on the surface may be requested to be that of a field.
 - [ ] Find last closed field lines
 - [ ] Quiver: log color scale and length/head angle properties
 - [ ] "Fancy look"
+- [ ] Handle leaves of adaptive grid
+- [ ] Plot of the original adaptive grid
+- [ ] Plot "spacecraft" observations
 
 ## Quick start/General use:
-In general, you don't want to do anything with the bats class as it does not
+There are two classes implemented: *bats* and *batsUni*.
+In general, you don't want to do anything with the *bats* class as it does not
 allow for plotting.
-Just use it to load the data and change to batsUni class.
+Just use it to load the data and change to *batsUni* class using *toBatsUni*
+function.
 This will interpolate the data to the grid requested by the user.
 Just interpolate the fields that are output by the run and calculate the rest
 after the interpolation to gain time.
-Now that you have a uniBats object, feel free to calculate a quantity and plot
+Now that you have a *batsUni* object, feel free to calculate a quantity and plot
 it.
 
 **1. Load the data:**
@@ -59,7 +66,7 @@ uni = data.toBatsUni(0.125,{'bx','by','bz','ux','uy','uz','jx','jy','jz','rho','
 ```
 Now looking at uni.Output, you will see that it is a mesh rather than a list.
 
-**3. Plot**
+**3. Plot**\
 Looking at uni.Output and uni.Derived gives you the name of the variables to
 plot.
 ```matlab
@@ -68,7 +75,7 @@ uni.plot('slice','variable','ux','yslice',0,'color','jet','colorposition','right
 uni.plot('stream','variable','b','start',[-25 -7 0],'color',[1,0,1],'linewidth',2);
 ```
 
-Other plots are possible by calling uni.plot('plottype') with plottype:
+Other plots are possible by calling uni.plot('plottype') with plottype:\
 slice/quiver/contour/stream/surface/isosurface.
 
 Check the extensive help for the plot function:
@@ -76,8 +83,8 @@ Check the extensive help for the plot function:
 help batsUni.plot
 ```
 
-## List-form class: bats
-The only thing this class can do is read a cdf file, calculate a bunch of physical quantities (see table below) and create a batsUni object (see below).
+## Non-Uniform grid class: bats
+The only thing this class can do is read a *cdf* file, calculate a bunch of physical quantities (see table below) and create a *batsUni* object (see below).
 No plot or anything else is provided for this class (because I don't know how to
 nicely handle the leaves of the adaptive grid so that plots could easily be made).
 
@@ -103,7 +110,7 @@ where the * is the quantity to calculate.
 Note that some of the calculations depend on each other and the user should call
 them in order!
 
-Inputs                  | Calculates                                                                             | Necessary parameters
+Functions               | Calculates                                                                             | Necessary parameters
 ------------------------|----------------------------------------------------------------------------------------|----------------------
 *calc_b*                | magnitude of the magnetic field                                                        | bx,by,bz
 *calc_b1*               | magnitude of the magnetic field deviation to the dipole                                | b1x, b1y,b1z
@@ -122,9 +129,19 @@ Inputs                  | Calculates                                            
 *calc_inertiallength*   | Ion inertial length (scale below which MHD does not hold)                              | alfven,plasmafreq
 *calc_electronVelocity* | Electron velocity as: $$\mathbf{V}_e = \mathbf{u} - (m_p/(m_p+m_e)) * \mathbf{J}/en$$  | rho,jx,jy,jz,ux,uy,uz
 *calc_protonVelocity*   | Proton velocity as: $$\mathbf{V}_i = \mathbf{u} + (m_e/(m_p+m_e)) * \mathbf{J}/en$$    | rho,jx,jy,jz,ux,uy,uz
+*calc_all*              | Calculates all the derived quantities                                                  |
 
-Note that because the data are in list form, we do not calculate any
-derivative-based quantities.
+Note that, because the data are in list form (leaves structure), we do not calculate any
+derivative-based quantities.\
+This class (*bats*) inherits from the *dynamicprops* class meaning that you can
+add new properties that I have not implemented:
+```matlab
+obj.addprop('NewProperty');
+obj.NewProperty = 1:10
+```
+For more info, see: [matlab dynamicprops]
+
+[matlab dunamicprops]: https://se.mathworks.com/help/matlab/ref/dynamicprops-class.html
 
 ### Example:
 Say we want to calculate the JxB-force:
@@ -145,7 +162,7 @@ data.Derived
 
 jxb is no longer empty.
 
-## Mesh-form class: batsUni (subclass of bats)
+## Uniform-grid class: batsUni (subclass of bats)
 The second class is called batsUni and is a subclass of bats.
 This means that it inherits all the calculation of the derived parameters in the
 table above.
@@ -154,13 +171,22 @@ can easily be evaluated.
 
 Additional calculations are the followings:
 
-Inputs                  | Calculates                                                                                                              | Necessary parameters
+Functions               | Calculates                                                                                                              | Necessary parameters
 ------------------------|-------------------------------------------------------------------------------------------------------------------------|----------------------
 *calc_gradPb*           | Gradient of magnetic pressure                                                                                           | pb
 *calc_gradP*            | Gradient of the plasma pressure                                                                                         | p
 *calc_vorticity*        | Vorticity as: $$\mathbf{\omega}= \nabla\times\mathbf{u}$$                                                               | ux,uy,uz
 *calc_divBB*            | Divergence of the magnetic energy tensor as: $$\text{Output} = \nabla\cdot\left(\frac{\mathbf{BB}}{\mu_0}}\right)$$     | bx,by,bz
 *calc_divRhoUU*         | Divergence of the magnetic energy tensor as: $$\text{Output} = \nabla\cdot\left(\rho\mathbf{uu}\right)$$                | rhoUx,rhoUy,rhoUz,ux,uy,uz
+
+Also, the following functions are implemented:
+
+Functions   | Effect                                                            | Parameters
+------------|-------------------------------------------------------------------|-----------
+*getData*   | Returns a *batsUni* object with data at the requested *positions* | positions (Nx3)
+*plotEarth* | Plot earth of radius 1 at (0,0,0)                                 |
+*plot*      | See documentation: *help batsUni.plot*                            |
+
 
 ### Example:
 1. Load data into a bats class

@@ -1,4 +1,4 @@
-classdef bats < handle
+classdef bats < dynamicprops
 
 %--------------------------------------------------
 %     PROPERTIES
@@ -49,7 +49,7 @@ classdef bats < handle
 
     % Scalars
     Pb, Vth, Temp, Beta, Alfven
-    Gyroradius, PlasmaFreq, InertialLength
+    Gyroradius, PlasmaFrequency, InertialLength
 
     %------------------------------
     %   Internal Variables
@@ -426,17 +426,17 @@ classdef bats < handle
       eps0 = 8.8542e-12;
       q = 1.6022e-19;
 
-      obj.PlasmaFreq = sqrt(n*q^2/(m*eps0));
-      obj.GlobalUnits.PlasmaFreq = 'rad/s';
+      obj.PlasmaFrequency = sqrt(n*q^2/(m*eps0));
+      obj.GlobalUnits.PlasmaFrequency = 'rad/s';
     end
     %------------------------------------------------------------
     function obj = calc_inertiallength(obj)
       if isempty(obj.Alfven)      obj.calc_alfven;      end
-      if isempty(obj.PlasmaFreq)  obj.calc_plasmafreq;  end
+      if isempty(obj.PlasmaFrequency)  obj.calc_plasmafreq;  end
 
       R = 6371.2;
 
-      obj.InertialLength = obj.Alfven./(obj.PlasmaFreq*R);
+      obj.InertialLength = obj.Alfven./(obj.PlasmaFrequency*R);
       obj.GlobalUnits.InertialLength = 'Re';
     end
     %------------------------------------------------------------
@@ -533,14 +533,14 @@ classdef bats < handle
         obj.(var{i}) = obj.(var{i})(idx);
       end
     end
-    function obj = clearField(obj,var)
+    function obj = clearFields(obj,var)
       for i = 1 : numel(var)
         obj.(var{i}) = [];
       end
     end
 
     %--------------------------------------------------
-    %         REDUCE DOMAIN METHODS
+    %   Domain
     function obj = reduceDomain(obj,varargin)
       if nargin == 0
         disp('No changes done. Pass arguments to reduce domain.')
@@ -558,6 +558,100 @@ classdef bats < handle
       end
     end
     %------------------------------------------------------------
+    function obj = getIndexDomain(obj,varargin)
+      if find(strcmp('xrange',varargin))
+        xrange = varargin{ find(strcmp('xrange',varargin))+1 };
+      else
+        xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
+      end
+      if find(strcmp('yrange',varargin))
+        yrange = varargin{ find(strcmp('yrange',varargin))+1 };
+      else
+        yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
+      end
+      if find(strcmp('zrange',varargin))
+        zrange = varargin{ find(strcmp('zrange',varargin))+1 };
+      else
+        zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
+      end
+
+      ix = find( obj.x>=min(xrange,[],'all') & obj.x<=max(xrange,[],'all') );
+      iy = find( obj.y>=min(yrange,[],'all') & obj.y<=max(yrange,[],'all') );
+      iz = find( obj.z>=min(zrange,[],'all') & obj.z<=max(zrange,[],'all') );
+      obj.IndicesReducedDomain = intersect(ix,intersect(iy,iz));
+    end
+    %------------------------------------------------------------
+    %   list fields
+    function Fields = listNonEmptyFields(obj,varargin)
+      Fields = {};
+      if isempty(varargin) | strcmp(varargin{1},'Output')
+        if ~isempty(obj.x)    Fields{end+1} = 'x';      end
+        if ~isempty(obj.y)    Fields{end+1} = 'y';      end
+        if ~isempty(obj.z)    Fields{end+1} = 'z';      end
+
+        if ~isempty(obj.bx)   Fields{end+1} = 'bx';     end
+        if ~isempty(obj.by)   Fields{end+1} = 'by';     end
+        if ~isempty(obj.bz)   Fields{end+1} = 'bz';     end
+
+        if ~isempty(obj.b1x)  Fields{end+1} = 'b1x';    end
+        if ~isempty(obj.b1y)  Fields{end+1} = 'b1y';    end
+        if ~isempty(obj.b1z)  Fields{end+1} = 'b1z';    end
+
+        if ~isempty(obj.ux)   Fields{end+1} = 'ux';     end
+        if ~isempty(obj.uy)   Fields{end+1} = 'uy';     end
+        if ~isempty(obj.uz)   Fields{end+1} = 'uz';     end
+
+        if ~isempty(obj.jx)   Fields{end+1} = 'jx';     end
+        if ~isempty(obj.jy)   Fields{end+1} = 'jy';     end
+        if ~isempty(obj.jz)   Fields{end+1} = 'jz';     end
+
+        if ~isempty(obj.rho)  Fields{end+1} = 'rho';    end
+        if ~isempty(obj.p)    Fields{end+1} = 'p';      end
+        if ~isempty(obj.e)    Fields{end+1} = 'e';      end
+      end
+
+      if isempty(varargin) | strcmp(varargin{1},'Derived')
+        if ~isempty(obj.b)    Fields{end+1} = 'b';      end
+        if ~isempty(obj.b1)   Fields{end+1} = 'b1';     end
+        if ~isempty(obj.u)    Fields{end+1} = 'u';      end
+        if ~isempty(obj.j)    Fields{end+1} = 'j';      end
+
+        if ~isempty(obj.jxbx) Fields{end+1} = 'jxbx';   end
+        if ~isempty(obj.jxby) Fields{end+1} = 'jxby';   end
+        if ~isempty(obj.jxbz) Fields{end+1} = 'jxbz';   end
+        if ~isempty(obj.jxb)  Fields{end+1} = 'jxb';    end
+
+        if ~isempty(obj.Ex)   Fields{end+1} = 'Ex';     end
+        if ~isempty(obj.Ey)   Fields{end+1} = 'Ey';     end
+        if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
+        if ~isempty(obj.E)    Fields{end+1} = 'E';      end
+
+        if ~isempty(obj.rhoUx) Fields{end+1} = 'rhoUx';   end
+        if ~isempty(obj.rhoUy) Fields{end+1} = 'rhoUy';   end
+        if ~isempty(obj.rhoUz) Fields{end+1} = 'rhoUz';   end
+        if ~isempty(obj.rhoU)  Fields{end+1} = 'rhoU';    end
+
+        if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
+        if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
+        if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
+        if ~isempty(obj.Beta)             Fields{end+1} = 'Beta';             end
+        if ~isempty(obj.Alfven)           Fields{end+1} = 'Alfven';           end
+        if ~isempty(obj.Gyroradius)       Fields{end+1} = 'Gyroradius';       end
+        if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
+        if ~isempty(obj.PlasmaFrequency)  Fields{end+1} = 'PlasmaFrequency';  end
+      end
+    %------------------------------------------------------------
+    end
+    %------------------------------------------------------------
+    function output = copyObject(input, output)
+       C = metaclass(input);
+       P = C.Properties;
+       for k = 1:length(P)
+         if ~P{k}.Dependent
+           output.(P{k}.Name) = input.(P{k}.Name);
+         end
+       end
+    end
   end   % Methods
 
   methods (Hidden)
@@ -626,107 +720,13 @@ classdef bats < handle
       Derived.Alfven = obj.Alfven;
       Derived.Vth = obj.Vth;
       Derived.Gyroradius = obj.Gyroradius;
-      Derived.PlasmaFrequency = obj.PlasmaFreq;
+      Derived.PlasmaFrequency = obj.PlasmaFrequency;
       Derived.InertialLength = obj.InertialLength;
     end
   end
 
-  methods (Hidden, Access = protected)
-    %------------------------------------------------------------
-    function obj = getIndexDomain(obj,varargin)
-      if find(strcmp('xrange',varargin))
-        xrange = varargin{ find(strcmp('xrange',varargin))+1 };
-      else
-        xrange = [min(obj.x,[],'all') max(obj.x,[],'all')];
-      end
-      if find(strcmp('yrange',varargin))
-        yrange = varargin{ find(strcmp('yrange',varargin))+1 };
-      else
-        yrange = [min(obj.y,[],'all') max(obj.y,[],'all')];
-      end
-      if find(strcmp('zrange',varargin))
-        zrange = varargin{ find(strcmp('zrange',varargin))+1 };
-      else
-        zrange = [min(obj.z,[],'all') max(obj.z,[],'all')];
-      end
-
-      ix = find( obj.x>=min(xrange,[],'all') & obj.x<=max(xrange,[],'all') );
-      iy = find( obj.y>=min(yrange,[],'all') & obj.y<=max(yrange,[],'all') );
-      iz = find( obj.z>=min(zrange,[],'all') & obj.z<=max(zrange,[],'all') );
-      obj.IndicesReducedDomain = intersect(ix,intersect(iy,iz));
-    end
-    %------------------------------------------------------------
-    function Fields = listNonEmptyFields(obj,varargin)
-      Fields = {};
-      if isempty(varargin) | strcmp(varargin{1},'Output')
-        if ~isempty(obj.x)    Fields{end+1} = 'x';      end
-        if ~isempty(obj.y)    Fields{end+1} = 'y';      end
-        if ~isempty(obj.z)    Fields{end+1} = 'z';      end
-
-        if ~isempty(obj.bx)   Fields{end+1} = 'bx';     end
-        if ~isempty(obj.by)   Fields{end+1} = 'by';     end
-        if ~isempty(obj.bz)   Fields{end+1} = 'bz';     end
-
-        if ~isempty(obj.b1x)  Fields{end+1} = 'b1x';    end
-        if ~isempty(obj.b1y)  Fields{end+1} = 'b1y';    end
-        if ~isempty(obj.b1z)  Fields{end+1} = 'b1z';    end
-
-        if ~isempty(obj.ux)   Fields{end+1} = 'ux';     end
-        if ~isempty(obj.uy)   Fields{end+1} = 'uy';     end
-        if ~isempty(obj.uz)   Fields{end+1} = 'uz';     end
-
-        if ~isempty(obj.jx)   Fields{end+1} = 'jx';     end
-        if ~isempty(obj.jy)   Fields{end+1} = 'jy';     end
-        if ~isempty(obj.jz)   Fields{end+1} = 'jz';     end
-
-        if ~isempty(obj.rho)  Fields{end+1} = 'rho';    end
-        if ~isempty(obj.p)    Fields{end+1} = 'p';      end
-        if ~isempty(obj.e)    Fields{end+1} = 'e';      end
-      end
-
-      if isempty(varargin) | strcmp(varargin{1},'Derived')
-        if ~isempty(obj.b)    Fields{end+1} = 'b';      end
-        if ~isempty(obj.b1)   Fields{end+1} = 'b1';     end
-        if ~isempty(obj.u)    Fields{end+1} = 'u';      end
-        if ~isempty(obj.j)    Fields{end+1} = 'j';      end
-
-        if ~isempty(obj.jxbx) Fields{end+1} = 'jxbx';   end
-        if ~isempty(obj.jxby) Fields{end+1} = 'jxby';   end
-        if ~isempty(obj.jxbz) Fields{end+1} = 'jxbz';   end
-        if ~isempty(obj.jxb)  Fields{end+1} = 'jxb';    end
-
-        if ~isempty(obj.Ex)   Fields{end+1} = 'Ex';     end
-        if ~isempty(obj.Ey)   Fields{end+1} = 'Ey';     end
-        if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
-        if ~isempty(obj.E)    Fields{end+1} = 'E';      end
-
-        if ~isempty(obj.rhoUx) Fields{end+1} = 'rhoUx';   end
-        if ~isempty(obj.rhoUy) Fields{end+1} = 'rhoUy';   end
-        if ~isempty(obj.rhoUz) Fields{end+1} = 'rhoUz';   end
-        if ~isempty(obj.rhoU)  Fields{end+1} = 'rhoU';    end
-
-        if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
-        if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
-        if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
-        if ~isempty(obj.Beta)             Fields{end+1} = 'Beta';             end
-        if ~isempty(obj.Alfven)           Fields{end+1} = 'Alfven';           end
-        if ~isempty(obj.Gyroradius)       Fields{end+1} = 'Gyroradius';       end
-        if ~isempty(obj.PlasmaFreq)       Fields{end+1} = 'PlasmaFreq';       end
-        if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
-      end
-    %------------------------------------------------------------
-    end
-    %------------------------------------------------------------
-    function output = copyObject(input, output)
-       C = metaclass(input);
-       P = C.Properties;
-       for k = 1:length(P)
-         if ~P{k}.Dependent
-           output.(P{k}.Name) = input.(P{k}.Name);
-         end
-       end
-    end
-    %------------------------------------------------------------
-  end   % Methods (hidden, protected)
+%  methods (Hidden, Access = protected)
+%    %------------------------------------------------------------
+%  end   % Methods (hidden, protected)
 
 end     % Class

@@ -21,6 +21,9 @@ classdef batsUni < bats
     %   Constructor
     %----------------------------------------
     function obj = batsUni(varargin)
+      if nargin == 0
+        return
+      end
       obj = varargin{1}.copyObject(obj);
       if find(strcmpi('xrange',varargin))
         xr = varargin{ find(strcmpi('xrange',varargin))+1 };
@@ -96,28 +99,22 @@ classdef batsUni < bats
       obj.GlobalUnits.j  = 'muA/m^2';
     end
     %----------------------------------------
-    function obj = getData(obj,position)
-      dx = obj.x - position(1);
-      dy = obj.y - position(2);
-      dz = obj.z - position(3);
-      idxx = find( dx == min(dx) );
-      idxy = find( dy == min(dy) );
-      idxz = find( dz == min(dz) );
-
-      idx = intersect(idxx,intersect(idxy,idxz));
-
-      [idx_x,idx_y,idx_z] = ind2sub(size(obj.x),idx);
-
+    function objOut = getData(obj,position)
+      % position: [Nx3]
+      objOut = batsUni();
       var = obj.listNonEmptyFields;
-
-      for i = 1 : numel(var)
-        obj.(var{i}) = obj.(var{i})(idx_x,idx_y,idx_z);
-      end
-    end
-    %----------------------------------------
-    function obj = clearField(obj,var)
-      for i = 1 : numel(var)
-        obj.(var{i}) = [];
+      for i = 1 : size(position,1)
+        dx = abs(obj.x - position(i,1));
+        dy = abs(obj.y - position(i,2));
+        dz = abs(obj.z - position(i,3));
+        idxx = find( dx == min(dx,[],'all') );     % Each give a plane
+        idxy = find( dy == min(dy,[],'all') );
+        idxz = find( dz == min(dz,[],'all') );
+        idx = intersect(idxx,intersect(idxy,idxz));
+        [idx_x,idx_y,idx_z] = ind2sub(size(obj.x),idx);
+        for j = 1 : numel(var)
+          objOut.(var{j})(i,1) = obj.(var{j})(idx_x,idx_y,idx_z);
+        end
       end
     end
     %----------------------------------------
@@ -542,7 +539,7 @@ classdef batsUni < bats
           end
           colormap(ax,colorName);
           cb = colorbar(ax);
-          cl = [variable,' [',obj.GlobalUnits.(ColorVariable),']'];
+          cl = [ColorVariable,' [',obj.GlobalUnits.(ColorVariable),']'];
           delete(findall(ax,'type','Line'));
         else
           set(hp,'color',colorName(1,:),'LineWidth',LineWidth);
@@ -699,6 +696,16 @@ classdef batsUni < bats
         %  pause(.1)
         %end
       end
+    end
+    %--------------------------------------------------
+    function output = copyObject(input, output)
+       C = metaclass(input);
+       P = C.Properties;
+       for k = 1:length(P)
+         if ~P{k}.Dependent
+           output.(P{k}.Name) = input.(P{k}.Name);
+         end
+       end
     end
   end
   %--------------------------------------------------
