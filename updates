@@ -1,3 +1,7 @@
+04-11-2019
+----------
+- Implemented in batsUni: plotSC : to plot "spacecraft data" the appearance is not great but it works.
+
 01-11-2019
 ----------
-- Implemented: getData : to get "spacecraft data"
+- Implemented in batsUni: getData : to get "spacecraft data"
