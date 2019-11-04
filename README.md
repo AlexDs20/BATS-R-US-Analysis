@@ -141,7 +141,7 @@ obj.NewProperty = 1:10
 ```
 For more info, see: [matlab dynamicprops]
 
-[matlab dunamicprops]: https://se.mathworks.com/help/matlab/ref/dynamicprops-class.html
+[matlab dynamicprops]: https://se.mathworks.com/help/matlab/ref/dynamicprops-class.html
 
 ### Example:
 Say we want to calculate the JxB-force:

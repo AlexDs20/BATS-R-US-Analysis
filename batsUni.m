@@ -584,7 +584,6 @@ classdef batsUni < bats
 
       obj.setProperties(ax,cb,xl,yl,zl,position,visible, ...
               islog,cl,colorposition,colorrange);
-
     % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
       if isempty(find(strcmpi('newfigure',varargin)))
         % Linkaxes:
@@ -697,6 +696,64 @@ classdef batsUni < bats
         %end
       end
     end
+    %----------------------------------------
+    %     Plotting spacecraft
+    function h = plotSC(obj,positions,var,varargin)
+      % function h = plotSC(obj,var,positions,varargin)
+      data = obj.getData(positions);
+      R = sqrt(sum(positions.^2,2));
+
+      h = figure;
+      set(h,'Units','Normalized','OuterPosition',[0 0 1 1]);
+      color = 'kbrcmg';
+      L = numel(var);
+      M = 1;
+      ym = 0.1; yM = 0.9;
+      ddy = 0.01;
+      dy = (yM-ym)/L-(L-1)*ddy;
+      xm = 0.1; xM = 0.9;
+
+      for i = 1 : L
+        VAR = var{i};
+        ax(i) = axes;
+        set(ax(i),'Units','Normalized','Position',[xm yM-i*dy-(i-1)*ddy xM-xm dy]);
+        hold(ax(i),'on');
+
+        if iscell(VAR)
+          yl = [];
+          for j = 1 : numel(VAR)
+            plot(ax(i),R,data.(VAR{j}),color(j));
+            yl = [yl,VAR{j},' '];
+          end
+          legend(ax(i),VAR);
+          ylabel([yl, '[',obj.GlobalUnits.(VAR{1}),']']);
+        else
+          plot(ax(i),R,data.(VAR),color(1));
+          ylabel([char(VAR), ' [',obj.GlobalUnits.(VAR),']']);
+        end
+
+        grid
+        if i ~= L
+          set(ax(i),'XTickLabel',[]);
+        elseif i == L
+          linkaxes(ax(:),'x');
+          axis tight;
+          xlabel('R [R]');
+          [Rlabels,I] = sort(R);
+          Rlabels = Rlabels(1:2:end);
+          Xlabels = positions(I(1:2:end),1);
+          Ylabels = positions(I(1:2:end),2);
+          Zlabels = positions(I(1:2:end),3);
+          xticks(Rlabels);
+          labels = compose('% 3.4f\\newline% 3.4f\\newline% 3.4f\\newline% 3.4f',[Rlabels,Xlabels,Ylabels,Zlabels]);
+          xticklabels( labels );
+          yt = get(ax(i),'YTick');
+          t = text;
+          set(t,'Position',[Rlabels(1)-(Rlabels(2)-Rlabels(1))*0.5 min(ylim)-(yt(2)-yt(1))*1 0],'String','R [R]\newlineX [R]\newlineY [R]\newlineZ [R]');
+        end
+      end
+    end
+
     %--------------------------------------------------
     function output = copyObject(input, output)
        C = metaclass(input);
