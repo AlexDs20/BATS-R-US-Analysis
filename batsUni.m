@@ -710,13 +710,20 @@ classdef batsUni < bats
       M = 1;
       ym = 0.1; yM = 0.9;
       ddy = 0.01;
-      dy = (yM-ym)/L-(L-1)*ddy;
+      dy = (yM-ym-(L-1)*ddy)/L;
       xm = 0.1; xM = 0.9;
+
+      [Rlabels,I] = sort(R);
+      Rlabels = Rlabels(1:2:end);
+      Xlabels = positions(I(1:2:end),1);
+      Ylabels = positions(I(1:2:end),2);
+      Zlabels = positions(I(1:2:end),3);
 
       for i = 1 : L
         VAR = var{i};
         ax(i) = axes;
-        set(ax(i),'Units','Normalized','Position',[xm yM-i*dy-(i-1)*ddy xM-xm dy]);
+        axpos = [xm yM-i*dy-(i-1)*ddy xM-xm dy];
+        set(ax(i),'Units','Normalized','Position',axpos);
         hold(ax(i),'on');
 
         if iscell(VAR)
@@ -732,24 +739,18 @@ classdef batsUni < bats
           ylabel([char(VAR), ' [',obj.GlobalUnits.(VAR),']']);
         end
 
-        grid
+        grid(ax(i),'on');
+        box(ax(i),'on');
+        axis(ax(i),'tight');
+        xticks(ax(i),Rlabels);
         if i ~= L
           set(ax(i),'XTickLabel',[]);
         elseif i == L
           linkaxes(ax(:),'x');
-          axis tight;
-          xlabel('R [R]');
-          [Rlabels,I] = sort(R);
-          Rlabels = Rlabels(1:2:end);
-          Xlabels = positions(I(1:2:end),1);
-          Ylabels = positions(I(1:2:end),2);
-          Zlabels = positions(I(1:2:end),3);
-          xticks(Rlabels);
           labels = compose('% 3.4f\\newline% 3.4f\\newline% 3.4f\\newline% 3.4f',[Rlabels,Xlabels,Ylabels,Zlabels]);
           xticklabels( labels );
           yt = get(ax(i),'YTick');
-          t = text;
-          set(t,'Position',[Rlabels(1)-(Rlabels(2)-Rlabels(1))*0.5 min(ylim)-(yt(2)-yt(1))*1 0],'String','R [R]\newlineX [R]\newlineY [R]\newlineZ [R]');
+          a = annotation(h,'textbox', [axpos(1)/2 axpos(2) 0 0], 'String', 'R [R]\newlineX [R]\newlineY [R]\newlineZ [R]', 'FitBoxToText', true,'EdgeColor','none');
         end
       end
     end
