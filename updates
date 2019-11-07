@@ -1,6 +1,7 @@
 04-11-2019
 ----------
 - Implemented in batsUni: plotSC : to plot "spacecraft data" the appearance is not great but it works.
+- Slightly improved behaviour of the 'colorposition' in batsUni.
 
 01-11-2019
 ----------

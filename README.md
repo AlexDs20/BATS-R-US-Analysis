@@ -27,21 +27,20 @@ certain position
 user must give a mesh for the surface.
 - [x] Plot Isosurface: Find the surface for which a variable has a given value.
 The color on the surface may be requested to be that of a field.
+- [x] Plot "spacecraft" observations (give position and return time-series like
+  plot, but the x-axis is the position)
 
-## What is *not* implemented:
-- [ ] Quiver plot on a surface given by the user
+## What is *not* implemented (yet):
+- [ ] Quiver plot on a mesh given by the user
 - [ ] Quiver plot on the isosurface
-- [ ] Extend to allow beyond single species runs
+- [ ] Quiver: log color scale and length/head angle properties
+- [ ] Handle other runs than single species runs
 - [ ] Lighting to make the figure sick af!
 - [ ] Documentation
-- [ ] Good handling of the colorbars positions
-- [ ] Implement a "plot Earth" (with nice texture)
+- [ ] a "plot Earth" (with nice texture)
 - [ ] Find last closed field lines
-- [ ] Quiver: log color scale and length/head angle properties
-- [ ] "Fancy look"
 - [ ] Handle leaves of adaptive grid
-- [ ] Plot of the original adaptive grid
-- [ ] Plot "spacecraft" observations
+- [ ] Plot of the original adaptive grid (for the *bats* class)
 
 ## Quick start/General use:
 There are two classes implemented: *bats* and *batsUni*.
@@ -73,6 +72,10 @@ plot.
 uni.plot('newfigure', 'isosurface','variable','bx','level',0,'xrange',[-40 -5],'alpha',0.7,'colorposition','right','colorvariable','ux','color','jet');
 uni.plot('slice','variable','ux','yslice',0,'color','jet','colorposition','right','alpha',0.7);
 uni.plot('stream','variable','b','start',[-25 -7 0],'color',[1,0,1],'linewidth',2);
+```
+
+To plot "spacecraft" observations, use *uni.plotSC* function:
+```matlab
 ```
 
 Other plots are possible by calling uni.plot('plottype') with plottype:\

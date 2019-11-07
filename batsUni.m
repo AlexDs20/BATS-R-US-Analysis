@@ -291,7 +291,7 @@ classdef batsUni < bats
       %     - 'position', values                        Plot position in the figure
       %     - 'color',value                             color of the shown data. Either [R G B] for a single color plot (stream,contour,isosurface). Or a colormap (slice,quiver,stream,surface,isosurface)
       %     - 'alpha',value                             transparency: between [0,1]
-      %%TBD - 'colorposition',value                     Position of the colorbar/label of the ploted quantity
+      %%TBD - 'colorposition',value                     Position of the colorbar/label of the ploted quantity: either the location or the position (see colorbar doc.)
       %     - 'colorrange', [min max]                   range to use for the colorbar
       %     - 'xslice', value(s)                        value at which we want to do the cut(s)
       %     - 'yslice', value(s)                        value at which we want to do the cut(s)
@@ -307,7 +307,6 @@ classdef batsUni < bats
       %   ------------------------
       %     General simple rules:
       %     --------------------
-      %
       %       - The first plot MUST include 'newfigure'
       %       - A type of plot MUST always be given: 'slice', 'quiver', 'contour', 'stream', 'surface', 'isosurface'
       %       - The ('variable',value) pair MUST always be given.
@@ -406,9 +405,9 @@ classdef batsUni < bats
       % --------
       %
       %   Slice:
-      %     uni.plot('newfigure','slice','variable','ux','zslice',0,'color','jet','colorposition','right');
+      %     uni.plot('newfigure','slice','variable','ux','zslice',0,'color','jet','colorposition','eastoutside');
       %     uni.plot('slice','variable','ux','yslice',0,'color','parula', ...
-      %               'colorposition','left','alpha',0.8,'colorrange',[-200 800]);
+      %               'colorposition','westoutside','alpha',0.8,'colorrange',[-200 800]);
       %
       %   Quiver:
       %     uni.plot('quiver','variable','u','zrange',0,'color','parula','colorrange',[0 800]);
@@ -430,7 +429,7 @@ classdef batsUni < bats
       %   Isosurface:
       %     uni.plot('isosurface','variable','bx','level',0, ...
       %               'xrange',[-30 -10],'yrange',[-10 10],'alpha',0.7, ...
-      %               'colorposition','right','variable','ux','color','jet');
+      %               'colorposition','eastoutside','variable','ux','color','jet');
       %
       %
       %     Add lighting stuff, so that it looks sick af!
@@ -699,7 +698,29 @@ classdef batsUni < bats
     %----------------------------------------
     %     Plotting spacecraft
     function h = plotSC(obj,positions,var,varargin)
-      % function h = plotSC(obj,var,positions,varargin)
+      % h = plotSC(positions,var,varargin)
+      %
+      % Description:
+      %       Plot as if a spacecraft was moving through the simulation
+      %
+      % Output: h : handle to the figure
+      %
+      % Input:  positions: [Nx3] array of positions
+      %         var: cell arrays of variables to plot, each entry of the cell array is one panel
+      %              if an entry of the cell array is a cell array, the plot those variables on the same subplot.
+      %
+      % Example:
+      %       %Create position array:
+      %       pos(:,1) = [-18.00:0.125:-15.00];
+      %       pos(:,2) = 0.000 + zeros(size(pos,1),1);
+      %       pos(:,3) = 0.000 + zeros(size(pos,1),1);
+      %
+      %       % Create the cell array of variables to plot (5 subplots).
+      %       %          subplot1           subplot2           sp3            sp4   sp5
+      %       var = { {'ux','uy','uz'},  {'bx','by','bz'}, {'jx','jy','jz'}, 'rho', 'p' };
+      %
+      %       obj.plotSC(pos,var);
+
       data = obj.getData(positions);
       R = sqrt(sum(positions.^2,2));
 
@@ -1059,13 +1080,9 @@ classdef batsUni < bats
 
         if find(strcmpi('colorposition',var))
           colorposition = var{ find(strcmpi('colorposition',var))+1 };
-          if ischar(colorposition) & strcmpi(colorposition,'left')
-            colorposition = [0.07 0.1105 0.0112 0.8143];
-          elseif ischar(colorposition) & strcmpi(colorposition,'right')
-            colorposition = [0.92 0.1105 0.0112 0.8143];
-          end
         else
-          colorposition = [0.07 0.1105 0.0112 0.8143];
+          colorposition = [0.92 0.1105 0.0112 0.8143];
+          %colorposition = [0.07 0.1105 0.0112 0.8143];
         end
 
         if find(strcmpi('colorvariable',var))
@@ -1130,9 +1147,11 @@ classdef batsUni < bats
 
       % Colorbar stuff
       if ~isempty(cb)
-        set(cb, ...
-            'Position',colorposition ...
-            );
+        if ischar(colorposition)
+          set(cb,'Location',colorposition);
+        else
+          set(cb,'Position',colorposition);
+        end
         ylabel(cb,cl);
         caxis(ax,colorrange)
       end
