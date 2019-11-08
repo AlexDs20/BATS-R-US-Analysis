@@ -1,3 +1,7 @@
+08-11-2019
+----------
+- Implemented Handling of the length and behaviour of the quiver arrows using SetQuiverLength.
+
 04-11-2019
 ----------
 - Implemented in batsUni: plotSC : to plot "spacecraft data" the appearance is not great but it works.
