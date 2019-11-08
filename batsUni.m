@@ -300,6 +300,10 @@ classdef batsUni < bats
       %     - 'level', value                            value at which we want equal value of the variable (contour,isosurface)
       %     - 'start', [x,y,z]                          starting position for the streams
       %     - 'increment',value                         (integer) Increment used for quiver plot to not plot all the vectors
+      %     - 'HeadAngle',value                         Angle of the head of quiver plot [deg]
+      %     - 'HeadLength',value                        Length of the Head, (in units of the XYZ axis i.e. R)
+      %     - 'length',value                            Length of the quiver Tail. Only possible value atm: 'equal'
+      %     - 'MagUnitLength',value                     Magnitude of the field (quiver plot) corresponding to 1R on the plot, hence, a vector with the given magnitude would have length 1 (in xyz) on the plot
       %%TBD - 'fancylook'                               Make the plot sick as fuck!
       %
       %
@@ -340,6 +344,13 @@ classdef batsUni < bats
       %         - 'linewidth',value
       %         - 'xrange','yrange','zrange' to only show the vectors in this sub-domain defined by these inputs
       %         - 'increment',value     : integer number
+      %         - 'HeadAngle',value     : Angle of the Head of the arrows, given in degrees
+      %         - 'HeadLength',value    : Length of the Head in units of the XYZ axis
+      %         - 'Length',value        : only current possible input: 'equal'
+      %                                     if the 'equal' value is passed, all vectors will have the same length in the xyz space
+      %         - 'MagUnitLength',value : to manipulate the length of the quiver tail.
+      %                                   A vector with the given 'MagUnitLength' value will have length 1 on the plot.
+      %           If both ('Length','equal') and ('MagUnitLength',value) are given, all vectors will have the length 'MagUnitLength' (in units of the xyz). Note the big difference of the value to give 'MagUnitLength' when combine to ('Length','equal')
       %         - 'colorposition'
       %
       %     Contour:
@@ -452,14 +463,16 @@ classdef batsUni < bats
       %----------------------------------------
       %     TREAT INPUT
       [plotType, variable, islog, ...                    % GENERAL
-       xl, yl, zl, position, colorposition, ...
-       colorName, alpha, colorrange, ...          % Several Types
-       xslice, yslice, zslice, ...                % Slice and Contour
-       ix, iy, iz, increment, ...                  % Quiver
-       level, LineWidth, ...               % Contour
-       start, ColorVariable, ...                                 % Stream
-       X, Y, Z ...
-       ] ...
+        xl, yl, zl, position, colorposition, ...
+        colorName, alpha, colorrange, ...          % Several Types
+        xslice, yslice, zslice, ...                % Slice and Contour
+        ix, iy, iz, increment, ...                  % Quiver
+        level, LineWidth, ...               % Contour
+        HeadAngle, HeadLength, ...
+        QuiverLength, MagUnitLength, ...
+        start, ColorVariable, ...                                 % Stream
+        X, Y, Z ...
+      ] ...
         = obj.setInputValues(varargin(:));
 
 
@@ -491,13 +504,32 @@ classdef batsUni < bats
 
         hp = quiver3(ax, x,y,z, fieldx,fieldy,fieldz );
 
+        mag = sqrt(fieldx.^2+fieldy.^2+fieldz.^2);
         % Colors
         SetQuiverColor(hp,colormap(ax,colorName), ...
                         'range', colorrange, ...
-                        'mags',  sqrt(fieldx.^2+fieldy.^2+fieldz.^2) );
+                        'mags',  mag );
         set(hp,'LineWidth',LineWidth);
         cb = colorbar(ax);
         cl = [variable,' [',obj.GlobalUnits.([variable,'x']),']'];
+
+        % Quiver Length
+        if isempty(MagUnitLength)
+          MagUnitLength = max(mag,[],'all');
+          if strcmpi(QuiverLength,'equal')
+            Length = 0.9*increment*obj.GlobalCellSize*(mag./mag);
+          else
+            Length = 1.2*increment*obj.GlobalCellSize*(mag./MagUnitLength);
+          end
+        else
+          if strcmpi(QuiverLength,'equal')
+            Length = MagUnitLength * ones(size(mag));
+          else
+            Length = mag./MagUnitLength;
+          end
+        end
+        drawnow;
+        SetQuiverLength(hp,Length,'HeadLength',HeadLength,'HeadAngle',HeadAngle);
 
         % SetLength?
       elseif plotType == 3  % Contour
@@ -601,6 +633,9 @@ classdef batsUni < bats
           end
         elseif plotType == 2
           hpCopy = copyobj(hp,ax_prev(end));
+          drawnow; pause(0.1);
+          set(hpCopy.Head,'VertexData',get(hp.Head,'VertexData'));    % Somehow this is not conserved when copying
+          set(hpCopy.Tail,'VertexData',get(hp.Tail,'VertexData'));
           delete(hp)
         elseif plotType == 3
           for j = 1 : numel(hp)
@@ -943,8 +978,10 @@ classdef batsUni < bats
               xl, yl, zl, position, colorposition, ...
               colorName, alpha, colorrange, ...         % Several Types
               xslice, yslice, zslice, ...               % Slice
-              ix, iy, iz, increment ...       % Quiver
+              ix, iy, iz, increment, ...                % Quiver
               level, LineWidth, ...                     % Contour
+              HeadAngle, HeadLength, ...
+              QuiverLength, MagUnitLength, ...
               start, ColorVariable, ...                                % Stream
               X, Y, Z ...                               % Surface
               ] ...
@@ -1115,11 +1152,31 @@ classdef batsUni < bats
           X = []; Y = []; Z = [];
         end
       %----------------------------------------
-      %      Quiver increment
+      %      Quiver
         if find(strcmpi('increment',var))
           increment = var{ find(strcmpi('increment',var))+1 };
         else
           increment = 1;
+        end
+        if find(strcmpi('HeadAngle',var))
+          HeadAngle = var{ find(strcmpi('HeadAngle',var))+1 };
+        else
+          HeadAngle = 30;
+        end
+        if find(strcmpi('HeadLength',var))
+          HeadLength = var{ find(strcmpi('HeadLength',var))+1 };
+        else
+          HeadLength = (1/3)*obj.GlobalCellSize;
+        end
+        if find(strcmpi('length',var))
+          QuiverLength = var{ find(strcmpi('length',var))+1 };
+        else
+          QuiverLength = [];
+        end
+        if find(strcmpi('MagUnitLength',var))
+          MagUnitLength = var{ find(strcmpi('MagUnitLength',var))+1 };
+        else
+          MagUnitLength = [];
         end
     end
     %--------------------------------------------------
