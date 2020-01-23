@@ -1,3 +1,15 @@
+29-11-2019
+----------
+- Aspect ratio is now correct.
+- Added sizex, sizey parameters to give the size of the figure in units of the primary screen
+
+27-11-2019
+----------
+- Fixed the xlim ylim zlim conditions that did not hold through plots
+- Included code to set the colorbar transparency (setProperties function) as well, however, it does not work.
+  The transparency only sets if I do it manually (ie not in a script) and it does not stick :(
+  (Maybe this works in later matlab releases?)
+
 08-11-2019
 ----------
 - Implemented Handling of the length and behaviour of the quiver arrows using SetQuiverLength.

@@ -273,6 +273,8 @@ classdef batsUni < bats
       %   All inputs:
       %   ----------
       %     - 'newfigure'                               Creates a new figure on which the plot is made
+      %     - 'sizex',val                               Size of the new figure in units of the screen
+      %     - 'sizey',val                               Size of the new figure in units of the screen
       %     - 'slice'                                   plot slices of the domain
       %     - 'quiver'                                  plot vector arrows in the domain
       %     - 'contour'                                 plot contour level in a slice of the domain
@@ -446,23 +448,10 @@ classdef batsUni < bats
       %     Add lighting stuff, so that it looks sick af!
       %
 
-      % Check if we want a new figure
-      if find(strcmpi('newfigure',varargin))
-        h = figure('Units','Normalized','OuterPosition',[0 0 1 1],'Color',[1 1 1]);
-        visible = 'on';
-        ax = axes(h);
-      else
-        h = gcf;
-        visible = 'off';
-        ax_prev = findall(h,'type','axes');
-        % Create a new axes, copy of the previous one but I remove the plots that are on it.
-        ax = copyobj(ax_prev(end),h);
-        delete(get(ax,'Children'));
-      end
-
       %----------------------------------------
       %     TREAT INPUT
       [plotType, variable, islog, ...                    % GENERAL
+        sizex, sizey, ...
         xl, yl, zl, position, colorposition, ...
         colorName, alpha, colorrange, ...          % Several Types
         xslice, yslice, zslice, ...                % Slice and Contour
@@ -475,6 +464,19 @@ classdef batsUni < bats
       ] ...
         = obj.setInputValues(varargin(:));
 
+      % Check if we want a new figure
+      if find(strcmpi('newfigure',varargin))
+        h = figure('Units','Normalized','OuterPosition',[0 0 sizex sizey],'Color',[1 1 1]);
+        visible = 'on';
+        ax = axes(h);
+      else
+        h = gcf;
+        visible = 'off';
+        ax_prev = findall(h,'type','axes');
+        % Create a new axes, copy of the previous one but I remove the plots that are on it.
+        ax = copyobj(ax_prev(end),h);
+        delete(get(ax,'Children'));
+      end
 
       if plotType == 1  % Slice
         [x,y,z] = meshgrid(unique(obj.x(ix,iy,iz)),unique(obj.y(ix,iy,iz)),unique(obj.z(ix,iy,iz)));
@@ -613,7 +615,7 @@ classdef batsUni < bats
         cb = []; cl = [];
       end
 
-      obj.setProperties(ax,cb,xl,yl,zl,position,visible, ...
+      obj.setProperties(ax,cb,xl,yl,zl,position,visible, alpha, ...
               islog,cl,colorposition,colorrange);
     % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
       if isempty(find(strcmpi('newfigure',varargin)))
@@ -743,6 +745,8 @@ classdef batsUni < bats
       % Input:  positions: [Nx3] array of positions
       %         var: cell arrays of variables to plot, each entry of the cell array is one panel
       %              if an entry of the cell array is a cell array, the plot those variables on the same subplot.
+      %         varargin:
+      %             'xlinc',value         xlable increment used (so that we do not show too much text)
       %
       % Example:
       %       %Create position array:
@@ -759,8 +763,14 @@ classdef batsUni < bats
       data = obj.getData(positions);
       R = sqrt(sum(positions.^2,2));
 
+      if find(strcmpi('xlinc',varargin))
+        xlinc = varargin{ find(strcmpi('xlinc',varargin))+1 };
+      else
+        xlinc = 1;
+      end
+
       h = figure;
-      set(h,'Units','Normalized','OuterPosition',[0 0 1 1]);
+      set(h,'Units','Normalized','OuterPosition',[0 0 1 1],'color','w');
       color = 'kbrcmg';
       L = numel(var);
       M = 1;
@@ -794,16 +804,17 @@ classdef batsUni < bats
           plot(ax(i),R,data.(VAR),color(1));
           ylabel([char(VAR), ' [',obj.GlobalUnits.(VAR),']']);
         end
-
         grid(ax(i),'on');
         box(ax(i),'on');
         axis(ax(i),'tight');
-        xticks(ax(i),Rlabels);
+        xticks(ax(i),Rlabels(1:xlinc:end));
+        line(ax(i),ax(i).XLim,[0 0],'color',[0.3 0.3 0.3],'LineStyle','--','LineWidth',0.5,'HandleVisibility','off');
         if i ~= L
           set(ax(i),'XTickLabel',[]);
         elseif i == L
           linkaxes(ax(:),'x');
-          labels = compose('% 3.4f\\newline% 3.4f\\newline% 3.4f\\newline% 3.4f',[Rlabels,Xlabels,Ylabels,Zlabels]);
+          labels = compose('% 3.4f\\newline% 3.4f\\newline% 3.4f\\newline% 3.4f', ...
+                          [Rlabels(1:xlinc:end),Xlabels(1:xlinc:end),Ylabels(1:xlinc:end),Zlabels(1:xlinc:end)]);
           xticklabels( labels );
           yt = get(ax(i),'YTick');
           a = annotation(h,'textbox', [axpos(1)/2 axpos(2) 0 0], 'String', 'R [R]\newlineX [R]\newlineY [R]\newlineZ [R]', 'FitBoxToText', true,'EdgeColor','none');
@@ -843,10 +854,10 @@ classdef batsUni < bats
 
       [x,y,z] = sphere(50);
       c = zeros([size(x),3]);
-      IDay = find(x>=0);
-      [ix,iy] = ind2sub(size(x),IDay);
-      c(IDay) = 1;
-      c(numel(x)+IDay) = 1;
+      %IDay = find(x>=0);
+      %[ix,iy] = ind2sub(size(x),IDay);
+      %c(IDay) = 1;
+      %c(numel(x)+IDay) = 1;
 
       hp = surface(ax,x,y,z,c,'EdgeColor','none');
 
@@ -975,6 +986,7 @@ classdef batsUni < bats
     %     Plot stuff
     %--------------------------------------------------
     function [plotType, variable, islog, ...                   % GENERAL
+              sizex, sizey, ...
               xl, yl, zl, position, colorposition, ...
               colorName, alpha, colorrange, ...         % Several Types
               xslice, yslice, zslice, ...               % Slice
@@ -1012,7 +1024,7 @@ classdef batsUni < bats
         if find(strcmpi('xlim',var))
           xl = var{ find(strcmpi('xlim',var))+1 };
         else
-          if ~find(strcmpi('newfigure',var))
+          if isempty(find(strcmpi('newfigure',var)))
             xl = ca.XLim;
           else
             xl = obj.GlobalXRange;
@@ -1021,7 +1033,7 @@ classdef batsUni < bats
         if find(strcmpi('ylim',var))
           yl = var{ find(strcmpi('ylim',var))+1 };
         else
-          if ~find(strcmpi('newfigure',var))
+          if isempty(find(strcmpi('newfigure',var)))
             yl = ca.YLim;
           else
             yl = obj.GlobalYRange;
@@ -1030,7 +1042,7 @@ classdef batsUni < bats
         if find(strcmpi('zlim',var))
           zl = var{ find(strcmpi('zlim',var))+1 };
         else
-          if ~find(strcmpi('newfigure',var))
+          if isempty(find(strcmpi('newfigure',var)))
             zl = ca.ZLim;
           else
             zl = obj.GlobalZRange;
@@ -1047,6 +1059,17 @@ classdef batsUni < bats
           islog = 1;
         else
           islog = 0;
+        end
+        % Size of Figure in units of screen size
+        if find(strcmpi('sizex',var))
+          sizex =  var{ find(strcmpi('sizex',var))+1 };
+        else
+          sizex = 1;
+        end
+        if find(strcmpi('sizey',var))
+          sizey =  var{ find(strcmpi('sizey',var))+1 };
+        else
+          sizey = 1;
         end
 
       %----------------------------------------
@@ -1182,8 +1205,9 @@ classdef batsUni < bats
     %--------------------------------------------------
     function setProperties(obj,ax,cb, ...
               xl, yl, zl, position, ...
-              visible, ...
+              visible, alpha, ...
               islog, cl,colorposition,colorrange)
+      axis(ax,'equal');
       set(ax, ...
           'XLim', xl, 'YLim', yl, 'ZLim', zl, ...
           'Units','Normalized', ...
@@ -1211,6 +1235,16 @@ classdef batsUni < bats
         end
         ylabel(cb,cl);
         caxis(ax,colorrange)
+        % Colorbar transparency: (found at: https://stackoverflow.com/questions/37423603/setting-alpha-of-colorbar-in-matlab-r2015b )
+        % Somehow it does not work when run here but it works if use keyboard (however it does not stick! fuck this shit)
+        if 0
+          drawnow
+          cdata = cb.Face.Texture.CData;
+          cdata(end,:) = uint8(alpha * cdata(end,:));
+          cb.Face.Texture.CData = cdata;
+          cb.Face.Texture.ColorType = 'truecoloralpha';
+          cb.Face.ColorBinding = 'discrete';
+        end
       end
       %%POSITION
     end
