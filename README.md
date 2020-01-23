@@ -1,4 +1,6 @@
 # Plot BATS-R-US output in MATLAB
+[![DOI](https://zenodo.org/badge/217251340.svg)](https://zenodo.org/badge/latestdoi/217251340)
+
 
 ## Example of output:
 
