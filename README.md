@@ -16,17 +16,16 @@ If you have git installed on your machine:
 git clone https://github.com/AlexDs20/BATS-R-US-Analysis
 ```
 
-If you do not have git, simply download the zip and extract where you want.\
+If you do not have git, simply download the zip and extract where you want.
 
-Be sure to add the path so that MATLAB can find the functions.\
+Be sure to add the path to the folder in MATLAB so that it can find the functions.
 
-
-
-###Requirements:
+### Requirements:
 In order for the plots to work correctly, please have a look at the external
 tools that are dependencies (found at external/README.md).\
 For each of the dependencies, a link to the MATLAB file exchange site or github can be found.\
-Not all of them are necessary.
+Not all of them are necessary.\
+Again, do not forget to add the path to these external tools to MATLAB.
 
 ## What is implemented:
 
@@ -114,7 +113,8 @@ Check the extensive help for the plot function:
 help batsUni.plot
 ```
 
-To **plot spacecraft observations**, use *uni.plotSC* function.\
+### Artificial spacecraft data:
+use *uni.plotSC* function.\
 
 **1. Create spacecraft positions**\
 Create an (Nx3) array where you want the data.
@@ -137,7 +137,7 @@ var = { {'ux','uy','uz'},  {'bx','by','bz'}, {'jx','jy','jz'}, 'rho', 'p' };
 Here, each component of the vector fields **u**, **b** and **j** are plotted on the same subplot.\
 *rho* and *p* are plotted on their own subplots.\
 
-**3. Plot**\
+**3. Plot**
 ```matlab
 uni.plotSC(pos,var);
 ```
