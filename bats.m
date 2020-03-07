@@ -34,6 +34,9 @@ classdef bats < dynamicprops
     p
     e
 
+    % Radius of planet
+    R = 6371.2e3;
+
     % BATS-R-US Derived quantities
     % Magnitudes
     b, b1, u, j
@@ -281,8 +284,8 @@ classdef bats < dynamicprops
     end
     %------------------------------------------------------------
     function obj = calc_b1(obj)
-      if isempty(obj.b1x) obj.loadFields({'b1x','b1y','b1z'}); end
-
+      %if isempty(obj.b1x) obj.loadFields({'b1x','b1y','b1z'}); end
+      if isempty(obj.b1x) return; end
       obj.b1 = sqrt( obj.b1x.^2 + obj.b1y.^2 + obj.b1z.^2 );
       obj.GlobalUnits.b1 = obj.GlobalUnits.b1x;
     end
@@ -421,10 +424,10 @@ classdef bats < dynamicprops
       b = obj.b*1e-9;
       m = 1.6276219e-27;
       q = 1.6021766e-19;
-      R = 6371.2e3;
+      %R = 6371.2e3;
 
-      obj.Gyroradius = m*v./(q*b*R);
-      obj.GlobalUnits.Gyroradius = 'Re';
+      obj.Gyroradius = m*v./(q*b*obj.R);
+      obj.GlobalUnits.Gyroradius = 'R';
     end
     %------------------------------------------------------------
     function obj = calc_plasmafreq(obj)
@@ -445,10 +448,10 @@ classdef bats < dynamicprops
       if isempty(obj.Alfven)      obj.calc_alfven;      end
       if isempty(obj.PlasmaFrequency)  obj.calc_plasmafreq;  end
 
-      R = 6371.2;
+      %R = 6371.2;
 
-      obj.InertialLength = obj.Alfven./(obj.PlasmaFrequency*R);
-      obj.GlobalUnits.InertialLength = 'Re';
+      obj.InertialLength = obj.Alfven./(obj.PlasmaFrequency*obj.R);
+      obj.GlobalUnits.InertialLength = 'R';
     end
     %------------------------------------------------------------
     function calc_electronVelocity(obj)
@@ -702,20 +705,20 @@ classdef bats < dynamicprops
     % EXAMPLE:
     % -------
     %     Re = 6371.2e3;
-    %     res = 0.125;                            % Grid resolution
-    %     particles{1}.m = 1.6726219e-27;         % Proton mass
-    %     particles{1}.q = 1.602177e-19;          % e
-    %     particles{1}.x = -20*Re;
-    %     particles{1}.y = 0*Re;
-    %     particles{1}.z = 0*Re;
-    %     particles{1}.vpar = 3e5;                % 300km/s
-    %     particles{1}.vperp = 2e5;               % 200km/s
-    %     particles{1}.gyrophase = 0;             % gyrophase in degrees, angle from the ExB_n vector towards E, 0 = along ExB
+    %     res = 0.125*Re;                         % Grid resolution
+    %     particles{1}.m = 1.6726219e-27;         % [kg] Proton mass
+    %     particles{1}.q = 1.602177e-19;          % [C] e
+    %     particles{1}.x = -20*Re;                % [m]
+    %     particles{1}.y = 0*Re;                  % [m]
+    %     particles{1}.z = 0*Re;                  % [m]
+    %     particles{1}.vpar = 3e5;                % [m/s] 300km/s
+    %     particles{1}.vperp = 2e5;               % [m/s] 200km/s
+    %     particles{1}.gyrophase = 0;             % [degrees] gyrophase in degrees, angle from the ExB_n vector towards E, 0 = along ExB
     %     particles{1}.RefDir = [0 1 0];          % If no electric field, provide RefDir to know the reference direction from which to measure the gyrophase.
-    %     particles{1}.Tmax = 10*60;                 % Trace for 10 minutes trajectory
-    %     particles{1}.max_step_length = res/2;   % time reso based on speed
-    %     particles{1}.max_dt = 10;               % Arbitrary time resolution 10 sec
-    %     particles{1}.save_dt = 50;              % Max time at which we save
+    %     particles{1}.Tmax = 10*60;              % [s] Trace for 10 minutes trajectory
+    %     particles{1}.max_step_length = res/2;   % [m] time reso based on speed
+    %     particles{1}.max_dt = 10;               % [s] Arbitrary time resolution 10 sec
+    %     particles{1}.save_dt = 50;              % [s] Max time at which we save
     %     particles{1}.gyroperiod_steps = 20;     % Time reso: 20 push per gyroperiod
     %     particles{1}.forward = 1;               % Trace forward in time
 
@@ -759,7 +762,7 @@ classdef bats < dynamicprops
     % Trace each particle:
     for i = 1 : numel(particles)
       % New position variable
-      pos(1,:) = [particles{i}.x, particles{i}.y, particles{i}.z];
+      pos(1,:) = [particles{i}.x, particles{i}.y, particles{i}.z]/obj.R;
 
       % Get the field at the particle's position
       b(1) = Bx(pos(1,1),pos(1,2),pos(1,3));
@@ -773,14 +776,14 @@ classdef bats < dynamicprops
       ep = obj.PerpendicularE(e,b);
 
       % Initialise the velocity: give the vpar and vperp
-      vel(1,:) = obj.initialiseVelocity(particles{i},ep,b);
+      vel(1,:) = obj.initialiseVelocity(particles{i},ep*1e-3,b*1e-9);
 
       % Get the time step
       dt_2 = particles{i}.max_dt;
-      [dt,dt_2] = obj.calculateTimeStep(particles{i},vel(1,:),b,dt_2);
+      [dt,dt_2] = obj.calculateTimeStep(particles{i},vel(1,:),b*1e-9,dt_2);
 
       % Need to make half a step back first
-      vel(1,:) = obj.boris(vel(1,:),ep,b,-sign(particles{i}.forward)*dt/2, ...
+      vel(1,:) = obj.boris(vel(1,:),ep*1e-3,b*1e-9,-sign(particles{i}.forward)*dt/2, ...
                   particles{i}.q, particles{i}.m);
 
       % Variable to keep track of the time
@@ -812,13 +815,14 @@ classdef bats < dynamicprops
         ep = obj.PerpendicularE(e,b);
 
         % Get the time step to make
-        [dt,dt_2] = calculateTimeStep(particles{i},vel(1,:),b,dt_2);
+        [dt,dt_2] = obj.calculateTimeStep(particles{i},vel(1,:),b*1e-9,dt_2);
 
         % Get new velocity
-        vel(2,:) = obj.boris(vel(1,:),ep,b,sign(particles{i}.forward)*dt, ...
+        vel(2,:) = obj.boris(vel(1,:),ep*1e-3,b*1e-9,sign(particles{i}.forward)*dt, ...
                         particles{i}.q,particles{i}.m);
+
         % Push the positions
-        pos(2,:) = pos(1,:) + vel(2,:).*sign(particles{i}.forward)*dt_2;
+        pos(2,:) = pos(1,:) + (vel(2,:).*sign(particles{i}.forward)*dt_2)/obj.R;
 
         % Increment Time/iteration
         t = t + dt_2;
@@ -827,6 +831,12 @@ classdef bats < dynamicprops
         % Save the previous data if needed
         save{i} = obj.UpdateSaveData(save{i},pos,vel,t,dt_2,particles{i},j);
 
+        if save{i}.pos(end,1) > max(obj.x,[],'all') | save{i}.pos(end,1) < min(obj.x,[],'all') | ...
+           save{i}.pos(end,2) > max(obj.y,[],'all') | save{i}.pos(end,2) < min(obj.y,[],'all') | ...
+           save{i}.pos(end,3) > max(obj.z,[],'all') | save{i}.pos(end,3) < min(obj.z,[],'all')
+          break;
+        end
+
         disp( sprintf('Simulation time %0.2f s of %0.2f s',t,particles{i}.Tmax) );
       end   % Time loop
 
@@ -834,7 +844,6 @@ classdef bats < dynamicprops
       obj.Trajectories{i}.t = save{i}.t;
       obj.Trajectories{i}.pos = save{i}.pos;
       obj.Trajectories{i}.vel = save{i}.vel;
-
     end     % particle loop
 
     end     % function
@@ -931,14 +940,14 @@ classdef bats < dynamicprops
       else
         iter = false;
       end
-      if DR > particle.max_step_length | DT > particle.save_dt | iter
+      if DR*obj.R > particle.max_step_length | DT > particle.save_dt | iter
         save.t(end+1,1) = t-dt;
         save.pos(end+1,:) = pos(1,:);
         save.vel(end+1,:) = vel(1,:);           % Note this is not fully correct as the pos and vel are staggered
       end
     end
     %------------------------------
-    function [dt,dt_2] = calculateTimeStep(obj,particle,vel,b,dt_2)
+    function [dt,dt_1] = calculateTimeStep(obj,particle,vel,b,dt_2)
       % calculates the time steps needed for the current interation given the conditions
 
       q = particle.q;
@@ -957,7 +966,6 @@ classdef bats < dynamicprops
       % mean value
       dt_1 = min([dt0,dt1,dt2]);    % New step
       dt = 0.5*(dt_1 + dt_2);       % Mean step
-      dt_2 = dt_1;                  % Update the old stop to hold the new one
     end
     %------------------------------
     function ep = PerpendicularE(obj,e,b)

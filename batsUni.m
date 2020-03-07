@@ -457,7 +457,7 @@ classdef batsUni < bats
         xslice, yslice, zslice, ...                % Slice and Contour
         ix, iy, iz, increment, ...                  % Quiver
         level, LineWidth, ...               % Contour
-        HeadAngle, HeadLength, ...
+        HeadAngle, HeadLength, RotHead ...
         QuiverLength, MagUnitLength, ...
         start, ColorVariable, ...                                 % Stream
         X, Y, Z ...
@@ -531,7 +531,7 @@ classdef batsUni < bats
           end
         end
         drawnow;
-        SetQuiverLength(hp,Length,'HeadLength',HeadLength,'HeadAngle',HeadAngle);
+        SetQuiverLength(hp,Length,'HeadLength',HeadLength,'HeadAngle',HeadAngle,'RotHead',RotHead);
 
         % SetLength?
       elseif plotType == 3  % Contour
@@ -852,12 +852,14 @@ classdef batsUni < bats
         delete(get(ax,'Children'));
       end
 
-      [x,y,z] = sphere(50);
+      [y,x,z] = sphere(36);
       c = zeros([size(x),3]);
-      %IDay = find(x>=0);
-      %[ix,iy] = ind2sub(size(x),IDay);
-      %c(IDay) = 1;
-      %c(numel(x)+IDay) = 1;
+      IDay1 = find(x>=0&y>=0);
+      IDay2 = find(x>0&y<=0);
+      IDay = [IDay1(:);IDay2(:)];
+      [ix,iy] = ind2sub(size(x),IDay);
+      c(IDay) = 1;
+      c(numel(y)+IDay) = 1;
 
       hp = surface(ax,x,y,z,c,'EdgeColor','none');
 
@@ -992,7 +994,7 @@ classdef batsUni < bats
               xslice, yslice, zslice, ...               % Slice
               ix, iy, iz, increment, ...                % Quiver
               level, LineWidth, ...                     % Contour
-              HeadAngle, HeadLength, ...
+              HeadAngle, HeadLength, RotHead, ...
               QuiverLength, MagUnitLength, ...
               start, ColorVariable, ...                                % Stream
               X, Y, Z ...                               % Surface
@@ -1190,6 +1192,11 @@ classdef batsUni < bats
           HeadLength = var{ find(strcmpi('HeadLength',var))+1 };
         else
           HeadLength = (1/3)*obj.GlobalCellSize;
+        end
+        if find(strcmpi('RotHead',var))
+          RotHead = var{ find(strcmpi('RotHead',var))+1 };
+        else
+          RotHead = 0;
         end
         if find(strcmpi('length',var))
           QuiverLength = var{ find(strcmpi('length',var))+1 };
