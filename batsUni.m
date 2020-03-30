@@ -348,6 +348,7 @@ classdef batsUni < bats
       %         - 'increment',value     : integer number
       %         - 'HeadAngle',value     : Angle of the Head of the arrows, given in degrees
       %         - 'HeadLength',value    : Length of the Head in units of the XYZ axis
+      %         - 'RotHead', value      : Angle [deg] with which the head of the quiver will be rotated with the tail of vector as rotation axis
       %         - 'Length',value        : only current possible input: 'equal'
       %                                     if the 'equal' value is passed, all vectors will have the same length in the xyz space
       %         - 'MagUnitLength',value : to manipulate the length of the quiver tail.
@@ -414,6 +415,14 @@ classdef batsUni < bats
       %         - 'colorrange',[min max]
       %%TBD     - 'colorposition',value
       %
+      %     Trajectory:
+      %     ----------
+      %       MUST:
+      %         - To use this plot, you MUST first trace particles using the "traceParticles" routine
+      %         - 'trajectory'
+      %         - 'variable', Indices       : e.g. [Indices], for ploting the particles with indices Indices saved in: Trajectories([Indices])
+      %         - ''
+      %
       % EXAMPLES:
       % --------
       %
@@ -444,6 +453,7 @@ classdef batsUni < bats
       %               'xrange',[-30 -10],'yrange',[-10 10],'alpha',0.7, ...
       %               'colorposition','eastoutside','variable','ux','color','jet');
       %
+      %   Trajectory:
       %
       %     Add lighting stuff, so that it looks sick af!
       %
@@ -611,12 +621,42 @@ classdef batsUni < bats
         end
         %camlight
         %lighting gouraud
+      elseif plotType == 7  % Trajectory
+        if ~isempty(ColorVariable) & ~strcmpi(ColorVariable,'t')
+          F = griddedInterpolant(obj.x(ix,iy,iz),...
+                      obj.y(ix,iy,iz),obj.z(ix,iy,iz), ...
+                      double(obj.(ColorVariable)(ix,iy,iz)));
+        end
+        for j = 1 : numel(variable)
+          xd = obj.Trajectories{variable(j)}.pos(:,1)';
+          yd = obj.Trajectories{variable(j)}.pos(:,2)';
+          zd = obj.Trajectories{variable(j)}.pos(:,3)';
+          if isempty(ColorVariable) | ~strcmpi(ColorVariable,'t')
+            hp(j) = plot3(ax,xd,yd,zd,...
+                        'color',colorName(1,:),'LineWidth',LineWidth);
+            cb = [];
+            cl = [];
+          else
+            if strcmpi(ColorVariable,'t')
+              fieldinterp = obj.Trajectories{variable(j)}.t';
+              cl = [ColorVariable,' [s]'];
+            else
+              fieldinterp = F(xd,yd,zd);
+              cl = [ColorVariable,' [',obj.GlobalUnits.(ColorVariable),']'];
+              if j == 1, colormap(ax,colorName); end
+            end
+            hp(j) = surface(ax,[xd;xd],[yd;yd],[zd;zd],[fieldinterp;fieldinterp], ...
+                                'FaceColor','none','EdgeColor','interp','LineWidth',LineWidth);
+            cb = colorbar(ax);
+          end
+        end
       else
         cb = []; cl = [];
       end
 
       obj.setProperties(ax,cb,xl,yl,zl,position,visible, alpha, ...
               islog,cl,colorposition,colorrange);
+
     % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
       if isempty(find(strcmpi('newfigure',varargin)))
         % Linkaxes:
@@ -695,10 +735,29 @@ classdef batsUni < bats
             hpCopy = copyobj(hp,ax_prev(end));
             delete(ax);
           end
+        elseif plotType == 7
+          for j = 1 : numel(hp)
+            if ~isempty(ColorVariable)
+              if islog
+                RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
+              else
+                RGB = cmapping(hp(j).CData,colorName,colorrange);
+              end
+              hpCopy = copyobj(hp(j),ax_prev(end));
+              set(hpCopy,'CData',RGB);
+              delete(hp(j));
+            else
+              hpCopy = copyobj(hp(j),ax_prev(end));
+              delete(hp(j));
+            end
+          end
+          if isempty(ColorVariable)
+            delete(ax);
+          end
         end
       else
         % Change to real colors
-        if plotType == 1 || plotType == 5 || (plotType == 4 & ~isempty(ColorVariable))
+        if plotType == 1 || plotType == 5 || (plotType == 4 || plotType == 7 & ~isempty(ColorVariable))
           for j = 1 : numel(hp)
             if islog
               RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
@@ -1014,6 +1073,8 @@ classdef batsUni < bats
           plotType = 5;
         elseif find(strcmpi('isosurface',var))
           plotType = 6;
+        elseif find(strcmpi('trajectory',var))
+          plotType = 7;
         end
 
         if find(strcmpi('variable',var))
@@ -1112,13 +1173,19 @@ classdef batsUni < bats
           colorName = var{ find(strcmpi('color',var))+1 };
         else
           if (plotType == 1 | plotType == 2 | plotType == 5 | plotType == 6 | ...
-             (plotType == 4 & ~isempty(find(strcmpi('colorvariable',var)))) )
+             ( (plotType == 4 | plotType == 7) & ~isempty(find(strcmpi('colorvariable',var)))) )
             colorName = parula;
           elseif plotType == 3
             colorName = [1 0 1];
-          elseif plotType == 4
+          elseif plotType == 4 | plotType == 7
             colorName = [0.66, 0.66, 0.66];
           end
+        end
+
+        if find(strcmpi('colorvariable',var))
+          ColorVariable = var{ find(strcmpi('colorvariable',var))+1 };
+        else
+          ColorVariable = [];
         end
 
         if find(strcmpi('colorrange',var))
@@ -1135,6 +1202,15 @@ classdef batsUni < bats
             else
               colorrange = [0 1];
             end
+          elseif plotType == 7
+            if find(strcmpi('colorvariable',var)) & ~strcmpi(ColorVariable,'t')
+              colorrange = [min(obj.(ColorVariable)(ix,iy,iz),[],'all') max(obj.(ColorVariable)(ix,iy,iz),[],'all')];
+            elseif find(strcmpi('colorvariable',var)) & strcmpi(ColorVariable,'t')
+              colorrange = [ min(cellfun(@(x) x.t(1),obj.Trajectories,'UniformOutput', true)),...
+                              max(cellfun(@(x) x.t(end),obj.Trajectories,'UniformOutput', true)) ];
+            else
+              colorrange = [0 1];
+            end
           else
             colorrange = [0 1];  % This does not matter as for streams and contours, I only have 1 color in the colormap
           end
@@ -1147,11 +1223,6 @@ classdef batsUni < bats
           %colorposition = [0.07 0.1105 0.0112 0.8143];
         end
 
-        if find(strcmpi('colorvariable',var))
-          ColorVariable = var{ find(strcmpi('colorvariable',var))+1 };
-        else
-          ColorVariable = [];
-        end
       %----------------------------------------
       %      Line Prop
         if find(strcmpi('linewidth',var)), LineWidth = var{ find(strcmpi('linewidth',var))+1 };
