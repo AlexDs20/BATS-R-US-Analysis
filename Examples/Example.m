@@ -9,7 +9,7 @@ if 0
   original.clearFields({'b1x','b1y','b1z','e'});
   % Convert to uniform grid (batsUni class)
   uni = original.toBatsUni(0.125,{},'xrange',[-25  20],'yrange',[-20 20],'zrange',[-20 20]);
-  % save('/home/spiegel/Desktop/Programs/SWMF/data/uni.mat','uni','-v7.3');
+  % save('/home/spiegel/Desktop/Programs/SWMF/data/uni_interp.mat','uni','-v7.3');
 
 else
   load('Path/to/data/converted/to/batsUni/format');

@@ -1,4 +1,14 @@
 classdef batsUni < bats
+
+  properties(Hidden)
+    %------------------------------
+    %     COMPUTED FIELDS
+    Vorticityx, Vorticityy, Vorticityz, Vorticity
+    GradPx, GradPy, GradPz, GradP
+    GradPbx, GradPby, GradPbz, GradPb
+    DivBBx, DivBBy, DivBBz, DivBB
+    DivRhoUUx, DivRhoUUy, DivRhoUUz, DivRhoUU
+  end
   properties (Hidden, Access = protected)
     % Global
     GlobalCellSize
@@ -7,13 +17,6 @@ classdef batsUni < bats
     GlobalZRange
     GlobalInterpolation = false;
 
-    %------------------------------
-    %     COMPUTED FIELDS
-    Vorticityx, Vorticityy, Vorticityz, Vorticity
-    GradPx, GradPy, GradPz, GradP
-    GradPbx, GradPby, GradPbz, GradPb
-    DivBBx, DivBBy, DivBBz, DivBB
-    DivRhoUUx, DivRhoUUy, DivRhoUUz, DivRhoUU
   end
 
   methods
@@ -113,7 +116,7 @@ classdef batsUni < bats
         idx = intersect(idxx,intersect(idxy,idxz));
         [idx_x,idx_y,idx_z] = ind2sub(size(obj.x),idx);
         for j = 1 : numel(var)
-          objOut.(var{j})(i,1) = obj.(var{j})(idx_x,idx_y,idx_z);
+          objOut.(var{j})(i,1) = obj.(var{j})(idx_x(1),idx_y(1),idx_z(1));      % In case there 1 point is exactly in the middle...
         end
       end
     end
@@ -420,7 +423,8 @@ classdef batsUni < bats
       %       MUST:
       %         - To use this plot, you MUST first trace particles using the "traceParticles" routine
       %         - 'trajectory'
-      %         - 'variable', Indices       : e.g. [Indices], for ploting the particles with indices Indices saved in: Trajectories([Indices])
+      %         - 'variable', [i]       : e.g. [i], for ploting the ith particles: Trajectories([i]).
+      %                                   ([i] could be [1,3,4] to trace 3 particles)
       %         - ''
       %
       % EXAMPLES:
@@ -820,8 +824,7 @@ classdef batsUni < bats
       %       obj.plotSC(pos,var);
 
       data = obj.getData(positions);
-      R = sqrt(sum(positions.^2,2));
-
+      % Check for xlabels increments
       if find(strcmpi('xlinc',varargin))
         xlinc = varargin{ find(strcmpi('xlinc',varargin))+1 };
       else
@@ -833,16 +836,22 @@ classdef batsUni < bats
       color = 'kbrcmg';
       L = numel(var);
       M = 1;
-      ym = 0.1; yM = 0.9;
-      ddy = 0.01;
+      ym = 0.10; yM = 0.98;
+      ddy = 0.001;
       dy = (yM-ym-(L-1)*ddy)/L;
       xm = 0.1; xM = 0.9;
 
-      [Rlabels,I] = sort(R);
-      Rlabels = Rlabels(1:2:end);
-      Xlabels = positions(I(1:2:end),1);
-      Ylabels = positions(I(1:2:end),2);
-      Zlabels = positions(I(1:2:end),3);
+      % get the distance between the points so that one can plot them in the given order
+      distance = zeros(size(positions,1)-1,1);
+      for i = size(positions,1)-1 : -1 : 1
+        distance(i) = sqrt( sum((positions(i+1,:)-positions(i,:)).^2) );
+      end
+      distance = [0; cumsum(distance)];
+
+      Rlabels = sqrt(sum(data.x.^2 + data.y.^2 + data.z.^2,2));
+      Xlabels = data.x;
+      Ylabels = data.y;
+      Zlabels = data.z;
 
       for i = 1 : L
         VAR = var{i};
@@ -850,29 +859,28 @@ classdef batsUni < bats
         axpos = [xm yM-i*dy-(i-1)*ddy xM-xm dy];
         set(ax(i),'Units','Normalized','Position',axpos);
         hold(ax(i),'on');
-
         if iscell(VAR)
           yl = [];
           for j = 1 : numel(VAR)
-            plot(ax(i),R,data.(VAR{j}),color(j));
-            yl = [yl,VAR{j},' '];
+            plot(ax(i),distance,data.(VAR{j}),color(j));
+            yl = [yl,VAR{j},newline];
           end
           legend(ax(i),VAR);
           ylabel([yl, '[',obj.GlobalUnits.(VAR{1}),']']);
         else
-          plot(ax(i),R,data.(VAR),color(1));
+          plot(ax(i),distance,data.(VAR),color(1));
           ylabel([char(VAR), ' [',obj.GlobalUnits.(VAR),']']);
         end
         grid(ax(i),'on');
         box(ax(i),'on');
         axis(ax(i),'tight');
-        xticks(ax(i),Rlabels(1:xlinc:end));
+        xticks(ax(i),distance(1:xlinc:end));
         line(ax(i),ax(i).XLim,[0 0],'color',[0.3 0.3 0.3],'LineStyle','--','LineWidth',0.5,'HandleVisibility','off');
         if i ~= L
           set(ax(i),'XTickLabel',[]);
         elseif i == L
           linkaxes(ax(:),'x');
-          labels = compose('% 3.4f\\newline% 3.4f\\newline% 3.4f\\newline% 3.4f', ...
+          labels = compose('% 3.2f\\newline% 3.2f\\newline% 3.2f\\newline% 3.2f', ...
                           [Rlabels(1:xlinc:end),Xlabels(1:xlinc:end),Ylabels(1:xlinc:end),Zlabels(1:xlinc:end)]);
           xticklabels( labels );
           yt = get(ax(i),'YTick');
@@ -951,6 +959,7 @@ classdef batsUni < bats
       field2x = [field2,'x']; field2y = [field2,'y']; field2z = [field2,'z'];
       Re = 6371.2e3;
 
+      % This needs to be done because matlab permute xyz into yxz for some reasons...
       x = permute(obj.x,[2 1 3]).*Re;
       y = permute(obj.y,[2 1 3]).*Re;
       z = permute(obj.z,[2 1 3]).*Re;
