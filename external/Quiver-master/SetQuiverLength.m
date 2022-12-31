@@ -13,6 +13,8 @@ function SetQuiverLength(q,mags,varargin)
 %                       It is applied to all the vectors
 %        'HeadAngle' = angle between the two lines forming the head
 %                      default=28.0724^\circ
+%        'RotHead'   = Angle [deg] by which the head will be rotated around the vector axis.
+%                      This allows to set the head in different planes
 %
 % NOTE: For some unknown reason, MATLAB does not always simply change the length of the vectors and requires a
 %       pause statement towards the end.
@@ -37,6 +39,7 @@ function SetQuiverLength(q,mags,varargin)
 %// Set default values of varargin
 HeadLength = [];
 HeadAngle = [];
+RotHead = [];
 
 %// Read the optional inputs
 if find(strcmp('HeadLength',varargin))
@@ -44,6 +47,9 @@ if find(strcmp('HeadLength',varargin))
 end
 if find(strcmp('HeadAngle',varargin))
   HeadAngle = varargin{ find(strcmp('HeadAngle',varargin))+1 };
+end
+if find(strcmp('RotHead',varargin))
+  RotHead = varargin{ find(strcmp('RotHead',varargin))+1 };
 end
 
 %// Start by removing the autoscale option
@@ -125,6 +131,25 @@ if ~isempty(HeadAngle)
                 k .* repmat(dot(k,Head_dir_a,1),size(H.VertexData,1),1,1) .* (1-ct);
   ct = repmat(cosd(-theta),size(H.VertexData,1),1,1);
   st = repmat(sind(-theta),size(H.VertexData,1),1,1);
+  Head_dir_b_r = Head_dir_b .* ct + ...
+                cross(k,Head_dir_b,1) .* st + ...
+                k .* repmat(dot(k,Head_dir_b,1),size(H.VertexData,1),1,1) .* (1-ct);
+  Head_dir_a = Head_dir_a_r;
+  Head_dir_b = Head_dir_b_r;
+end
+
+%// Set new RotHead by use of Rodrigues' rotation formula
+if ~isempty(RotHead)
+  % rotation axis:
+  k = Tail_dir;
+  % Angle of rotation:
+  theta = RotHead;
+  % Rotation
+  ct = repmat(cosd(theta),size(H.VertexData,1),1,1);
+  st = repmat(sind(theta),size(H.VertexData,1),1,1);
+  Head_dir_a_r = Head_dir_a .* ct + ...
+                cross(k,Head_dir_a,1) .* st + ...
+                k .* repmat(dot(k,Head_dir_a,1),size(H.VertexData,1),1,1) .* (1-ct);
   Head_dir_b_r = Head_dir_b .* ct + ...
                 cross(k,Head_dir_b,1) .* st + ...
                 k .* repmat(dot(k,Head_dir_b,1),size(H.VertexData,1),1,1) .* (1-ct);

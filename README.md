@@ -5,6 +5,7 @@
 ## Example of output:
 
 ![The neutral sheet is shown by asking to plot an isosurface of bx=0. On this surface, we use colors to show the plasma velocity along X (ux). We also show ux at y=0. And, for illustration we show a magnetic field line.](snapshots/sample.png)
+![Various regions of the magnetosphere (bow-shock, magnetospause, ...)](snapshots/Magnetosphere_edit.png)
 
 ## Warning:
 Working but in development.\
@@ -47,6 +48,9 @@ user must give a mesh for the surface.
 The color on the surface may be requested to be that of a field.
 - [x] Plot "spacecraft" observations (give position and return time-series like
   plot, but the x-axis is the position)
+- [x] Plot test particles in the simulation. Note however that it uses E = -VxB
+  at the moment
+- [x] Adding own fields (This is only partially done)
 
 ## What is *not* implemented (yet):
 - [ ] Quiver plot on a mesh given by the user
@@ -59,7 +63,6 @@ The color on the surface may be requested to be that of a field.
 - [ ] Find last closed field lines
 - [ ] Handle leaves of adaptive grid
 - [ ] Plot of the original adaptive grid (for the *bats* class)
-- [ ] Adding own fields easily
 
 ## Quick start:
 There are two classes implemented: *bats* and *batsUni*.\
@@ -143,6 +146,23 @@ Here, each component of the vector fields **u**, **b** and **j** are plotted on 
 ```matlab
 uni.plotSC(pos,var);
 ```
+
+## Test-particle tracing
+There is also the possibility to trace particles in the simulation (particle
+motion in static fields).
+Note that it uses: E = -VxB for the electric field!
+
+A plot of a trajectory can be made using the 'trajectory' keyword for the plot,
+followed by the trajectory of the particle as well as a 'variable' keyword to
+identify which particles to plot (in the trajectories cell array).
+
+The trajectories cell array can be obtained (and thus the particles'
+trajectories) can be calculated using the traceParticles function (see the
+bats.traceParticles help).
+
+A working example and structure of the input data needed to trace the particles is given in the help of the traceParticles function.
+
+
 
 ## Non-Uniform grid class: bats
 The only thing this class can do is read a *cdf* file, calculate a bunch of physical quantities (see table below) and create a *batsUni* object (see below).

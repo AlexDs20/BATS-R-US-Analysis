@@ -1,4 +1,14 @@
 classdef batsUni < bats
+
+  properties(Hidden)
+    %------------------------------
+    %     COMPUTED FIELDS
+    Vorticityx, Vorticityy, Vorticityz, Vorticity
+    GradPx, GradPy, GradPz, GradP
+    GradPbx, GradPby, GradPbz, GradPb
+    DivBBx, DivBBy, DivBBz, DivBB
+    DivRhoUUx, DivRhoUUy, DivRhoUUz, DivRhoUU
+  end
   properties (Hidden, Access = protected)
     % Global
     GlobalCellSize
@@ -7,13 +17,6 @@ classdef batsUni < bats
     GlobalZRange
     GlobalInterpolation = false;
 
-    %------------------------------
-    %     COMPUTED FIELDS
-    Vorticityx, Vorticityy, Vorticityz, Vorticity
-    GradPx, GradPy, GradPz, GradP
-    GradPbx, GradPby, GradPbz, GradPb
-    DivBBx, DivBBy, DivBBz, DivBB
-    DivRhoUUx, DivRhoUUy, DivRhoUUz, DivRhoUU
   end
 
   methods
@@ -113,7 +116,7 @@ classdef batsUni < bats
         idx = intersect(idxx,intersect(idxy,idxz));
         [idx_x,idx_y,idx_z] = ind2sub(size(obj.x),idx);
         for j = 1 : numel(var)
-          objOut.(var{j})(i,1) = obj.(var{j})(idx_x,idx_y,idx_z);
+          objOut.(var{j})(i,1) = obj.(var{j})(idx_x(1),idx_y(1),idx_z(1));      % In case there 1 point is exactly in the middle...
         end
       end
     end
@@ -348,6 +351,7 @@ classdef batsUni < bats
       %         - 'increment',value     : integer number
       %         - 'HeadAngle',value     : Angle of the Head of the arrows, given in degrees
       %         - 'HeadLength',value    : Length of the Head in units of the XYZ axis
+      %         - 'RotHead', value      : Angle [deg] with which the head of the quiver will be rotated with the tail of vector as rotation axis
       %         - 'Length',value        : only current possible input: 'equal'
       %                                     if the 'equal' value is passed, all vectors will have the same length in the xyz space
       %         - 'MagUnitLength',value : to manipulate the length of the quiver tail.
@@ -414,6 +418,15 @@ classdef batsUni < bats
       %         - 'colorrange',[min max]
       %%TBD     - 'colorposition',value
       %
+      %     Trajectory:
+      %     ----------
+      %       MUST:
+      %         - To use this plot, you MUST first trace particles using the "traceParticles" routine
+      %         - 'trajectory'
+      %         - 'variable', [i]       : e.g. [i], for ploting the ith particles: Trajectories([i]).
+      %                                   ([i] could be [1,3,4] to trace 3 particles)
+      %         - ''
+      %
       % EXAMPLES:
       % --------
       %
@@ -444,6 +457,7 @@ classdef batsUni < bats
       %               'xrange',[-30 -10],'yrange',[-10 10],'alpha',0.7, ...
       %               'colorposition','eastoutside','variable','ux','color','jet');
       %
+      %   Trajectory:
       %
       %     Add lighting stuff, so that it looks sick af!
       %
@@ -457,7 +471,7 @@ classdef batsUni < bats
         xslice, yslice, zslice, ...                % Slice and Contour
         ix, iy, iz, increment, ...                  % Quiver
         level, LineWidth, ...               % Contour
-        HeadAngle, HeadLength, ...
+        HeadAngle, HeadLength, RotHead ...
         QuiverLength, MagUnitLength, ...
         start, ColorVariable, ...                                 % Stream
         X, Y, Z ...
@@ -531,7 +545,7 @@ classdef batsUni < bats
           end
         end
         drawnow;
-        SetQuiverLength(hp,Length,'HeadLength',HeadLength,'HeadAngle',HeadAngle);
+        SetQuiverLength(hp,Length,'HeadLength',HeadLength,'HeadAngle',HeadAngle,'RotHead',RotHead);
 
         % SetLength?
       elseif plotType == 3  % Contour
@@ -611,12 +625,42 @@ classdef batsUni < bats
         end
         %camlight
         %lighting gouraud
+      elseif plotType == 7  % Trajectory
+        if ~isempty(ColorVariable) & ~strcmpi(ColorVariable,'t')
+          F = griddedInterpolant(obj.x(ix,iy,iz),...
+                      obj.y(ix,iy,iz),obj.z(ix,iy,iz), ...
+                      double(obj.(ColorVariable)(ix,iy,iz)));
+        end
+        for j = 1 : numel(variable)
+          xd = obj.Trajectories{variable(j)}.pos(:,1)';
+          yd = obj.Trajectories{variable(j)}.pos(:,2)';
+          zd = obj.Trajectories{variable(j)}.pos(:,3)';
+          if isempty(ColorVariable) | ~strcmpi(ColorVariable,'t')
+            hp(j) = plot3(ax,xd,yd,zd,...
+                        'color',colorName(1,:),'LineWidth',LineWidth);
+            cb = [];
+            cl = [];
+          else
+            if strcmpi(ColorVariable,'t')
+              fieldinterp = obj.Trajectories{variable(j)}.t';
+              cl = [ColorVariable,' [s]'];
+            else
+              fieldinterp = F(xd,yd,zd);
+              cl = [ColorVariable,' [',obj.GlobalUnits.(ColorVariable),']'];
+              if j == 1, colormap(ax,colorName); end
+            end
+            hp(j) = surface(ax,[xd;xd],[yd;yd],[zd;zd],[fieldinterp;fieldinterp], ...
+                                'FaceColor','none','EdgeColor','interp','LineWidth',LineWidth);
+            cb = colorbar(ax);
+          end
+        end
       else
         cb = []; cl = [];
       end
 
       obj.setProperties(ax,cb,xl,yl,zl,position,visible, alpha, ...
               islog,cl,colorposition,colorrange);
+
     % Link axes, put plots on same axes (needs true colors), delete axes (if no colorbar), ...
       if isempty(find(strcmpi('newfigure',varargin)))
         % Linkaxes:
@@ -695,10 +739,29 @@ classdef batsUni < bats
             hpCopy = copyobj(hp,ax_prev(end));
             delete(ax);
           end
+        elseif plotType == 7
+          for j = 1 : numel(hp)
+            if ~isempty(ColorVariable)
+              if islog
+                RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
+              else
+                RGB = cmapping(hp(j).CData,colorName,colorrange);
+              end
+              hpCopy = copyobj(hp(j),ax_prev(end));
+              set(hpCopy,'CData',RGB);
+              delete(hp(j));
+            else
+              hpCopy = copyobj(hp(j),ax_prev(end));
+              delete(hp(j));
+            end
+          end
+          if isempty(ColorVariable)
+            delete(ax);
+          end
         end
       else
         % Change to real colors
-        if plotType == 1 || plotType == 5 || (plotType == 4 & ~isempty(ColorVariable))
+        if plotType == 1 || plotType == 5 || (plotType == 4 || plotType == 7 & ~isempty(ColorVariable))
           for j = 1 : numel(hp)
             if islog
               RGB = cmapping(log10(hp(j).CData),colorName,log10(colorrange));
@@ -761,8 +824,7 @@ classdef batsUni < bats
       %       obj.plotSC(pos,var);
 
       data = obj.getData(positions);
-      R = sqrt(sum(positions.^2,2));
-
+      % Check for xlabels increments
       if find(strcmpi('xlinc',varargin))
         xlinc = varargin{ find(strcmpi('xlinc',varargin))+1 };
       else
@@ -774,16 +836,22 @@ classdef batsUni < bats
       color = 'kbrcmg';
       L = numel(var);
       M = 1;
-      ym = 0.1; yM = 0.9;
-      ddy = 0.01;
+      ym = 0.10; yM = 0.98;
+      ddy = 0.001;
       dy = (yM-ym-(L-1)*ddy)/L;
       xm = 0.1; xM = 0.9;
 
-      [Rlabels,I] = sort(R);
-      Rlabels = Rlabels(1:2:end);
-      Xlabels = positions(I(1:2:end),1);
-      Ylabels = positions(I(1:2:end),2);
-      Zlabels = positions(I(1:2:end),3);
+      % get the distance between the points so that one can plot them in the given order
+      distance = zeros(size(positions,1)-1,1);
+      for i = size(positions,1)-1 : -1 : 1
+        distance(i) = sqrt( sum((positions(i+1,:)-positions(i,:)).^2) );
+      end
+      distance = [0; cumsum(distance)];
+
+      Rlabels = sqrt(sum(data.x.^2 + data.y.^2 + data.z.^2,2));
+      Xlabels = data.x;
+      Ylabels = data.y;
+      Zlabels = data.z;
 
       for i = 1 : L
         VAR = var{i};
@@ -791,29 +859,28 @@ classdef batsUni < bats
         axpos = [xm yM-i*dy-(i-1)*ddy xM-xm dy];
         set(ax(i),'Units','Normalized','Position',axpos);
         hold(ax(i),'on');
-
         if iscell(VAR)
           yl = [];
           for j = 1 : numel(VAR)
-            plot(ax(i),R,data.(VAR{j}),color(j));
-            yl = [yl,VAR{j},' '];
+            plot(ax(i),distance,data.(VAR{j}),color(j));
+            yl = [yl,VAR{j},newline];
           end
           legend(ax(i),VAR);
           ylabel([yl, '[',obj.GlobalUnits.(VAR{1}),']']);
         else
-          plot(ax(i),R,data.(VAR),color(1));
+          plot(ax(i),distance,data.(VAR),color(1));
           ylabel([char(VAR), ' [',obj.GlobalUnits.(VAR),']']);
         end
         grid(ax(i),'on');
         box(ax(i),'on');
         axis(ax(i),'tight');
-        xticks(ax(i),Rlabels(1:xlinc:end));
+        xticks(ax(i),distance(1:xlinc:end));
         line(ax(i),ax(i).XLim,[0 0],'color',[0.3 0.3 0.3],'LineStyle','--','LineWidth',0.5,'HandleVisibility','off');
         if i ~= L
           set(ax(i),'XTickLabel',[]);
         elseif i == L
           linkaxes(ax(:),'x');
-          labels = compose('% 3.4f\\newline% 3.4f\\newline% 3.4f\\newline% 3.4f', ...
+          labels = compose('% 3.2f\\newline% 3.2f\\newline% 3.2f\\newline% 3.2f', ...
                           [Rlabels(1:xlinc:end),Xlabels(1:xlinc:end),Ylabels(1:xlinc:end),Zlabels(1:xlinc:end)]);
           xticklabels( labels );
           yt = get(ax(i),'YTick');
@@ -852,12 +919,14 @@ classdef batsUni < bats
         delete(get(ax,'Children'));
       end
 
-      [x,y,z] = sphere(50);
+      [y,x,z] = sphere(36);
       c = zeros([size(x),3]);
-      %IDay = find(x>=0);
-      %[ix,iy] = ind2sub(size(x),IDay);
-      %c(IDay) = 1;
-      %c(numel(x)+IDay) = 1;
+      IDay1 = find(x>=0&y>=0);
+      IDay2 = find(x>0&y<=0);
+      IDay = [IDay1(:);IDay2(:)];
+      [ix,iy] = ind2sub(size(x),IDay);
+      c(IDay) = 1;
+      c(numel(y)+IDay) = 1;
 
       hp = surface(ax,x,y,z,c,'EdgeColor','none');
 
@@ -890,6 +959,7 @@ classdef batsUni < bats
       field2x = [field2,'x']; field2y = [field2,'y']; field2z = [field2,'z'];
       Re = 6371.2e3;
 
+      % This needs to be done because matlab permute xyz into yxz for some reasons...
       x = permute(obj.x,[2 1 3]).*Re;
       y = permute(obj.y,[2 1 3]).*Re;
       z = permute(obj.z,[2 1 3]).*Re;
@@ -992,7 +1062,7 @@ classdef batsUni < bats
               xslice, yslice, zslice, ...               % Slice
               ix, iy, iz, increment, ...                % Quiver
               level, LineWidth, ...                     % Contour
-              HeadAngle, HeadLength, ...
+              HeadAngle, HeadLength, RotHead, ...
               QuiverLength, MagUnitLength, ...
               start, ColorVariable, ...                                % Stream
               X, Y, Z ...                               % Surface
@@ -1012,6 +1082,8 @@ classdef batsUni < bats
           plotType = 5;
         elseif find(strcmpi('isosurface',var))
           plotType = 6;
+        elseif find(strcmpi('trajectory',var))
+          plotType = 7;
         end
 
         if find(strcmpi('variable',var))
@@ -1110,13 +1182,19 @@ classdef batsUni < bats
           colorName = var{ find(strcmpi('color',var))+1 };
         else
           if (plotType == 1 | plotType == 2 | plotType == 5 | plotType == 6 | ...
-             (plotType == 4 & ~isempty(find(strcmpi('colorvariable',var)))) )
+             ( (plotType == 4 | plotType == 7) & ~isempty(find(strcmpi('colorvariable',var)))) )
             colorName = parula;
           elseif plotType == 3
             colorName = [1 0 1];
-          elseif plotType == 4
+          elseif plotType == 4 | plotType == 7
             colorName = [0.66, 0.66, 0.66];
           end
+        end
+
+        if find(strcmpi('colorvariable',var))
+          ColorVariable = var{ find(strcmpi('colorvariable',var))+1 };
+        else
+          ColorVariable = [];
         end
 
         if find(strcmpi('colorrange',var))
@@ -1133,6 +1211,15 @@ classdef batsUni < bats
             else
               colorrange = [0 1];
             end
+          elseif plotType == 7
+            if find(strcmpi('colorvariable',var)) & ~strcmpi(ColorVariable,'t')
+              colorrange = [min(obj.(ColorVariable)(ix,iy,iz),[],'all') max(obj.(ColorVariable)(ix,iy,iz),[],'all')];
+            elseif find(strcmpi('colorvariable',var)) & strcmpi(ColorVariable,'t')
+              colorrange = [ min(cellfun(@(x) x.t(1),obj.Trajectories,'UniformOutput', true)),...
+                              max(cellfun(@(x) x.t(end),obj.Trajectories,'UniformOutput', true)) ];
+            else
+              colorrange = [0 1];
+            end
           else
             colorrange = [0 1];  % This does not matter as for streams and contours, I only have 1 color in the colormap
           end
@@ -1145,11 +1232,6 @@ classdef batsUni < bats
           %colorposition = [0.07 0.1105 0.0112 0.8143];
         end
 
-        if find(strcmpi('colorvariable',var))
-          ColorVariable = var{ find(strcmpi('colorvariable',var))+1 };
-        else
-          ColorVariable = [];
-        end
       %----------------------------------------
       %      Line Prop
         if find(strcmpi('linewidth',var)), LineWidth = var{ find(strcmpi('linewidth',var))+1 };
@@ -1190,6 +1272,11 @@ classdef batsUni < bats
           HeadLength = var{ find(strcmpi('HeadLength',var))+1 };
         else
           HeadLength = (1/3)*obj.GlobalCellSize;
+        end
+        if find(strcmpi('RotHead',var))
+          RotHead = var{ find(strcmpi('RotHead',var))+1 };
+        else
+          RotHead = 0;
         end
         if find(strcmpi('length',var))
           QuiverLength = var{ find(strcmpi('length',var))+1 };

@@ -13,6 +13,7 @@ classdef bats < dynamicprops
   properties (Dependent)
     % BATS-R-US Derived
     Derived = struct();
+    UserFields = struct();
   end
 
   properties (Hidden, GetAccess = protected, SetAccess = protected)
@@ -34,6 +35,9 @@ classdef bats < dynamicprops
     p
     e
 
+    % Radius of planet
+    R = 6371.2e3;
+
     % BATS-R-US Derived quantities
     % Magnitudes
     b, b1, u, j
@@ -51,11 +55,21 @@ classdef bats < dynamicprops
     Pb, Vth, Temp, Beta, Alfven
     Gyroradius, PlasmaFrequency, InertialLength
 
+    % Particles' Trajectories
+    Trajectories = {};
+
+    % User Variables
+    UserVar = {};
+
     %------------------------------
     %   Internal Variables
 
     % Reduced domain indices
     IndicesReducedDomain
+
+    % Interpolation functions (when going to batsUni)
+    Interpolation = struct();
+
   end
 
 %--------------------------------------------------
@@ -122,6 +136,11 @@ classdef bats < dynamicprops
       Derived = obj.getDerived;
     end
     %------------------------------------------------------------
+    function UserFields = get.UserFields(obj)
+      UserFields = obj.getUserFields;
+    end
+    %------------------------------------------------------------
+
 
     %------------------------------------------------------------
     %   Modify the data in obj
@@ -257,6 +276,9 @@ classdef bats < dynamicprops
         F = scatteredInterpolant(x,y,z,double(obj1.(var{i})(ind)),'nearest');
 
         obj.(var{i}) = single(F(double(xmesh), double(ymesh), double(zmesh)));
+
+        % Save the interpolant in case we want to trace particles
+        obj.Interpolation.(var{i}) = F;
       end
     end
     %----------------------------------------
@@ -270,8 +292,8 @@ classdef bats < dynamicprops
     end
     %------------------------------------------------------------
     function obj = calc_b1(obj)
-      if isempty(obj.b1x) obj.loadFields({'b1x','b1y','b1z'}); end
-
+      %if isempty(obj.b1x) obj.loadFields({'b1x','b1y','b1z'}); end
+      if isempty(obj.b1x) return; end
       obj.b1 = sqrt( obj.b1x.^2 + obj.b1y.^2 + obj.b1z.^2 );
       obj.GlobalUnits.b1 = obj.GlobalUnits.b1x;
     end
@@ -327,7 +349,7 @@ classdef bats < dynamicprops
       obj.GlobalUnits.jxb  = 'fN/m^3';
     end
     %------------------------------------------------------------
-    function obj = calc_E(obj)
+    function obj = calc_Econv(obj)
       % units:  [u]: km/s
       %         [b]: nT
       %         [E]: mV/m
@@ -410,10 +432,10 @@ classdef bats < dynamicprops
       b = obj.b*1e-9;
       m = 1.6276219e-27;
       q = 1.6021766e-19;
-      R = 6371.2e3;
+      %R = 6371.2e3;
 
-      obj.Gyroradius = m*v./(q*b*R);
-      obj.GlobalUnits.Gyroradius = 'Re';
+      obj.Gyroradius = m*v./(q*b*obj.R);
+      obj.GlobalUnits.Gyroradius = 'R';
     end
     %------------------------------------------------------------
     function obj = calc_plasmafreq(obj)
@@ -434,10 +456,10 @@ classdef bats < dynamicprops
       if isempty(obj.Alfven)      obj.calc_alfven;      end
       if isempty(obj.PlasmaFrequency)  obj.calc_plasmafreq;  end
 
-      R = 6371.2;
+      %R = 6371.2;
 
-      obj.InertialLength = obj.Alfven./(obj.PlasmaFrequency*R);
-      obj.GlobalUnits.InertialLength = 'Re';
+      obj.InertialLength = obj.Alfven./(obj.PlasmaFrequency*obj.R);
+      obj.GlobalUnits.InertialLength = 'R';
     end
     %------------------------------------------------------------
     function calc_electronVelocity(obj)
@@ -504,7 +526,7 @@ classdef bats < dynamicprops
       obj.calc_rhoU;
       obj.calc_j;
       obj.calc_jxb;
-      obj.calc_E;
+      obj.calc_Econv;
       obj.calc_temp;
       obj.calc_pb;
       obj.calc_beta;
@@ -517,6 +539,18 @@ classdef bats < dynamicprops
       obj.calc_protonVelocity;
     end
     %------------------------------------------------------------
+    %   New Field
+    function obj = NewField(obj,name,data,units)
+      % Create a new field defined by the user
+
+      % Check if field already exist
+      if isfield(obj.Output,name) | isfield(obj.Output,name)
+        error(sprintf('There is already a variable with the name: %s. Try something else.',name))
+      end
+      addprop(obj,name);
+      obj.(name) = data;
+      obj.GlobalUnits.(name) = units;
+    end
 
     %------------------------------------------------------------
     %   Return Data
@@ -584,61 +618,26 @@ classdef bats < dynamicprops
     %   list fields
     function Fields = listNonEmptyFields(obj,varargin)
       Fields = {};
-      if isempty(varargin) | strcmp(varargin{1},'Output')
-        if ~isempty(obj.x)    Fields{end+1} = 'x';      end
-        if ~isempty(obj.y)    Fields{end+1} = 'y';      end
-        if ~isempty(obj.z)    Fields{end+1} = 'z';      end
+      FieldsOutput = fieldnames(obj.Output);
+      FieldsDerived = fieldnames(obj.Derived);
 
-        if ~isempty(obj.bx)   Fields{end+1} = 'bx';     end
-        if ~isempty(obj.by)   Fields{end+1} = 'by';     end
-        if ~isempty(obj.bz)   Fields{end+1} = 'bz';     end
-
-        if ~isempty(obj.b1x)  Fields{end+1} = 'b1x';    end
-        if ~isempty(obj.b1y)  Fields{end+1} = 'b1y';    end
-        if ~isempty(obj.b1z)  Fields{end+1} = 'b1z';    end
-
-        if ~isempty(obj.ux)   Fields{end+1} = 'ux';     end
-        if ~isempty(obj.uy)   Fields{end+1} = 'uy';     end
-        if ~isempty(obj.uz)   Fields{end+1} = 'uz';     end
-
-        if ~isempty(obj.jx)   Fields{end+1} = 'jx';     end
-        if ~isempty(obj.jy)   Fields{end+1} = 'jy';     end
-        if ~isempty(obj.jz)   Fields{end+1} = 'jz';     end
-
-        if ~isempty(obj.rho)  Fields{end+1} = 'rho';    end
-        if ~isempty(obj.p)    Fields{end+1} = 'p';      end
-        if ~isempty(obj.e)    Fields{end+1} = 'e';      end
+      for i = 1 : numel(FieldsOutput)
+        if ~isempty(obj.(FieldsOutput{i}))
+          Fields{end+1} = FieldsOutput{i};
+        end
       end
-
-      if isempty(varargin) | strcmp(varargin{1},'Derived')
-        if ~isempty(obj.b)    Fields{end+1} = 'b';      end
-        if ~isempty(obj.b1)   Fields{end+1} = 'b1';     end
-        if ~isempty(obj.u)    Fields{end+1} = 'u';      end
-        if ~isempty(obj.j)    Fields{end+1} = 'j';      end
-
-        if ~isempty(obj.jxbx) Fields{end+1} = 'jxbx';   end
-        if ~isempty(obj.jxby) Fields{end+1} = 'jxby';   end
-        if ~isempty(obj.jxbz) Fields{end+1} = 'jxbz';   end
-        if ~isempty(obj.jxb)  Fields{end+1} = 'jxb';    end
-
-        if ~isempty(obj.Ex)   Fields{end+1} = 'Ex';     end
-        if ~isempty(obj.Ey)   Fields{end+1} = 'Ey';     end
-        if ~isempty(obj.Ez)   Fields{end+1} = 'Ez';     end
-        if ~isempty(obj.E)    Fields{end+1} = 'E';      end
-
-        if ~isempty(obj.rhoUx) Fields{end+1} = 'rhoUx';   end
-        if ~isempty(obj.rhoUy) Fields{end+1} = 'rhoUy';   end
-        if ~isempty(obj.rhoUz) Fields{end+1} = 'rhoUz';   end
-        if ~isempty(obj.rhoU)  Fields{end+1} = 'rhoU';    end
-
-        if ~isempty(obj.Pb)               Fields{end+1} = 'Pb';               end
-        if ~isempty(obj.Vth)              Fields{end+1} = 'Vth';              end
-        if ~isempty(obj.Temp)             Fields{end+1} = 'Temp';             end
-        if ~isempty(obj.Beta)             Fields{end+1} = 'Beta';             end
-        if ~isempty(obj.Alfven)           Fields{end+1} = 'Alfven';           end
-        if ~isempty(obj.Gyroradius)       Fields{end+1} = 'Gyroradius';       end
-        if ~isempty(obj.InertialLength)   Fields{end+1} = 'InertialLength';   end
-        if ~isempty(obj.PlasmaFrequency)  Fields{end+1} = 'PlasmaFrequency';  end
+      for i = 1 : numel(FieldsDerived)
+        if ~isempty(obj.(FieldsDerived{i}))
+          Fields{end+1} = FieldsDerived{i};
+        end
+      end
+      if ~isempty(obj.UserFields)
+        FieldsUser = fieldnames(obj.UserFields);
+        for i = 1 : numel(FieldsUser)
+          if ~isempty(obj.(FieldsUser{i}))
+            Fields{end+1} = FieldsUser{i};
+          end
+        end
       end
     %------------------------------------------------------------
     end
@@ -652,6 +651,187 @@ classdef bats < dynamicprops
          end
        end
     end
+    %------------------------------------------------------------
+    %   Trace Particle
+    function obj = traceParticles(obj,particles)
+      % obj = traceParticles(particles)
+      %
+      % Trace particles in an electromagnetic fields using Boris pushing algorithm
+      %
+      % The fields are the already interpolated fields when gone to uniform grid and are used to get the value of their value at exact particles' position
+      %
+      % INPUT:
+      % -----
+      %
+      %   fields:   structure fields.x, fields.y, fields.z          [m]
+      %                       fields.bx, fields.by, fields.bz       [T]
+      %                       fields.ex, fields.ey, fields.ez       [V/m]
+      %
+      %
+      %   particles: cell array of structures
+      %               particles{i} contains the information of the ith particle to be traced
+      %               particles{i}.m
+      %               particles{i}.q
+      %               particles{i}.x
+      %               particles{i}.y
+      %               particles{i}.z
+      %               particles{i}.vpar
+      %               particles{i}.vperp
+      %               particles{i}.gyrophase                     Gyrophase [degrees], angle measured from the ExB direction towards the E direction
+      %               particles{i}.RefDir                        To provide for the gyrophase if there is no electric       field. It serves as the reference direction from which the gyrophase is measured
+      %               particles{i}.Tmax                          Total tracing time
+      %               particles{i}.max_step_length                Max length for Boris and Max distance for saving
+      %               particles{i}.max_dt                        Max dt used for Boris algo
+      %               particles{i}.save_dt                        Max dt at which we save
+      %               particles{i}.gyroperiod_steps               Minimum amount of steps for a single gyration
+      %               particles{i}.forward
+      %
+      %
+      % EXAMPLE:
+      % -------
+      %     Re = 6371.2e3;
+      %     res = 0.125*Re;                         % Grid resolution
+      %     particles{1}.m = 1.6726219e-27;         % [kg] Proton mass
+      %     particles{1}.q = 1.602177e-19;          % [C] e
+      %     particles{1}.x = -20*Re;                % [m]
+      %     particles{1}.y = 0*Re;                  % [m]
+      %     particles{1}.z = 0*Re;                  % [m]
+      %     particles{1}.vpar = 3e5;                % [m/s] 300km/s
+      %     particles{1}.vperp = 2e5;               % [m/s] 200km/s
+      %     particles{1}.gyrophase = 0;             % [degrees] gyrophase in degrees, angle from the ExB_n vector towards E, 0 = along ExB
+      %     particles{1}.RefDir = [0 1 0];          % If no electric field, provide RefDir to know the reference direction from which to measure the gyrophase.
+      %     particles{1}.Tmax = 10*60;              % [s] Trace for 10 minutes trajectory
+      %     particles{1}.max_step_length = res/2;   % [m] time reso based on speed
+      %     particles{1}.max_dt = 10;               % [s] Arbitrary time resolution 10 sec
+      %     particles{1}.save_dt = 50;              % [s] Max time at which we save
+      %     particles{1}.gyroperiod_steps = 20;     % Time reso: 20 push per gyroperiod
+      %     particles{1}.forward = 1;               % Trace forward in time
+
+      % Start by checking if interpolation exists
+      x = double(obj.x(:));
+      y = double(obj.y(:));
+      z = double(obj.z(:));
+      if isfield(obj.Interpolation,'bx') | isfield(obj.Interpolation,'by') | isfield(obj.Interpolation,'bz')
+      else
+        disp('Missing interpolation for the magnetic field. Doing it now:');
+        disp('Interpolation Bx');
+        obj.Interpolation.bx = scatteredInterpolant(x,y,z,double(obj.bx(:)),'nearest');
+        disp('Interpolation By');
+        obj.Interpolation.by = scatteredInterpolant(x,y,z,double(obj.by(:)),'nearest');
+        disp('Interpolation Bz');
+        obj.Interpolation.bz = scatteredInterpolant(x,y,z,double(obj.bz(:)),'nearest');
+      end
+      if isfield(obj.Interpolation,'Ex') | isfield(obj.Interpolation,'Ey') | isfield(obj.Interpolation,'Ez')
+      else
+        obj.calc_Econv;
+        disp('Missing interpolation for the electric field. Doing it now:');
+        warning('Note that this uses the Convective E Field. This is probably not true for your simulation and should NOT be used in an article!');
+        disp('Interpolation Ex');
+        obj.Interpolation.Ex = scatteredInterpolant(x,y,z,double(obj.Ex(:)),'nearest');
+        disp('Interpolation Ey');
+        obj.Interpolation.Ey = scatteredInterpolant(x,y,z,double(obj.Ey(:)),'nearest');
+        disp('Interpolation Ez');
+        obj.Interpolation.Ez = scatteredInterpolant(x,y,z,double(obj.Ez(:)),'nearest');
+      end
+
+      obj.Trajectories = particles;
+
+      Bx = obj.Interpolation.bx;
+      By = obj.Interpolation.by;
+      Bz = obj.Interpolation.bz;
+      Ex = obj.Interpolation.Ex;
+      Ey = obj.Interpolation.Ey;
+      Ez = obj.Interpolation.Ez;
+
+      % Trace each particle:
+      for i = 1 : numel(particles)
+        % New position variable
+        pos(1,:) = [particles{i}.x, particles{i}.y, particles{i}.z]/obj.R;
+
+        % Get the field at the particle's position
+        b(1) = Bx(pos(1,1),pos(1,2),pos(1,3));
+        b(2) = By(pos(1,1),pos(1,2),pos(1,3));
+        b(3) = Bz(pos(1,1),pos(1,2),pos(1,3));
+        e(1) = Ex(pos(1,1),pos(1,2),pos(1,3));
+        e(2) = Ey(pos(1,1),pos(1,2),pos(1,3));
+        e(3) = Ez(pos(1,1),pos(1,2),pos(1,3));
+
+        % Make sure we only have Eperp
+        ep = obj.PerpendicularE(e,b);
+
+        % Initialise the velocity: give the vpar and vperp
+        vel(1,:) = obj.initialiseVelocity(particles{i},ep*1e-3,b*1e-9);
+
+        % Get the time step
+        dt_2 = particles{i}.max_dt;
+        [dt,dt_2] = obj.calculateTimeStep(particles{i},vel(1,:),b*1e-9,dt_2);
+
+        % Need to make half a step back first
+        vel(1,:) = obj.boris(vel(1,:),ep*1e-3,b*1e-9,-sign(particles{i}.forward)*dt/2, ...
+                    particles{i}.q, particles{i}.m);
+
+        % Variable to keep track of the time
+        t = -sign(particles{i}.forward)*dt/2;
+
+        % These will keep track the positions and velocities between the known position/vel and the one calculated
+        pos(2,:) = pos(1,:);
+        vel(2,:) = vel(1,:);
+
+        % Variables to save
+        save{i}.t(1) = t;
+        save{i}.pos(1,:) = pos(1,:);
+        save{i}.vel(1,:) = vel(1,:);
+
+        % Loop over the time
+        j = 0;
+        while t < particles{i}.Tmax
+          pos(1,:) = pos(2,:);
+          vel(1,:) = vel(2,:);
+          % Get local E and B
+          b(1) = Bx(pos(1,1),pos(1,2),pos(1,3));
+          b(2) = By(pos(1,1),pos(1,2),pos(1,3));
+          b(3) = Bz(pos(1,1),pos(1,2),pos(1,3));
+          e(1) = Ex(pos(1,1),pos(1,2),pos(1,3));
+          e(2) = Ey(pos(1,1),pos(1,2),pos(1,3));
+          e(3) = Ez(pos(1,1),pos(1,2),pos(1,3));
+
+          % Make sure we only have Eperp
+          ep = obj.PerpendicularE(e,b);
+
+          % Get the time step to make
+          [dt,dt_2] = obj.calculateTimeStep(particles{i},vel(1,:),b*1e-9,dt_2);
+
+          % Get new velocity
+          vel(2,:) = obj.boris(vel(1,:),ep*1e-3,b*1e-9,sign(particles{i}.forward)*dt, ...
+                          particles{i}.q,particles{i}.m);
+
+          % Push the positions
+          pos(2,:) = pos(1,:) + (vel(2,:).*sign(particles{i}.forward)*dt_2)/obj.R;
+
+          % Increment Time/iteration
+          t = t + dt_2;
+          j = j+1;
+
+          % Save the previous data if needed
+          save{i} = obj.UpdateSaveData(save{i},pos,vel,t,dt_2,particles{i},j);
+
+          if save{i}.pos(end,1) > max(obj.x,[],'all') | save{i}.pos(end,1) < min(obj.x,[],'all') | ...
+             save{i}.pos(end,2) > max(obj.y,[],'all') | save{i}.pos(end,2) < min(obj.y,[],'all') | ...
+             save{i}.pos(end,3) > max(obj.z,[],'all') | save{i}.pos(end,3) < min(obj.z,[],'all')
+            break;
+          end
+
+          disp( sprintf('Simulation time %0.2f s of %0.2f s',t,particles{i}.Tmax) );
+        end   % Time loop
+
+        % Save the info in the particles cell array
+        obj.Trajectories{i}.t = save{i}.t;
+        obj.Trajectories{i}.pos = save{i}.pos;
+        obj.Trajectories{i}.vel = save{i}.vel;
+      end     % particle loop
+    end     % function
+    %------------------------------------------------------------
+
   end   % Methods
 
   methods (Hidden)
@@ -665,6 +845,12 @@ classdef bats < dynamicprops
     end
     %------------------------------------------------------------
     function Output = getOutput(obj)
+%      % Get the name of all the fields
+%      field=fieldnames(obj)
+%      % Set them in the right structure
+%      for i = 1 : numel(field)
+%        Output.(field(i)) = obj.(field(i));
+%      end
       Output.x = obj.x;
       Output.y = obj.y;
       Output.z = obj.z;
@@ -722,11 +908,133 @@ classdef bats < dynamicprops
       Derived.Gyroradius = obj.Gyroradius;
       Derived.PlasmaFrequency = obj.PlasmaFrequency;
       Derived.InertialLength = obj.InertialLength;
+      Derived.Trajectories = obj.Trajectories;
+    end
+    %------------------------------------------------------------
+    function UserFields = getUserFields(obj)
+      UserFields = obj.UserVar;
     end
   end
 
-%  methods (Hidden, Access = protected)
-%    %------------------------------------------------------------
-%  end   % Methods (hidden, protected)
+  methods (Hidden, Access = protected)
+    %------------------------------------------------------------
+    %   Functions for particle tracing
+    function save = UpdateSaveData(obj,save,pos,vel,t,dt,particle,j)
+      % Checks if the data needs to be save and does it
 
+      % Spatial step since save
+      DR = sqrt(sum((save.pos(end,:) - pos(2,:)).^2));
+      % Time step since save
+      DT = save.t(end) - t;
+      % Check iteration
+      if mod(j,nearest(particle.gyroperiod_steps/20)) == 0
+        iter = true;
+      else
+        iter = false;
+      end
+      if DR*obj.R > particle.max_step_length | DT > particle.save_dt | iter
+        save.t(end+1,1) = t-dt;
+        save.pos(end+1,:) = pos(1,:);
+        save.vel(end+1,:) = vel(1,:);           % Note this is not fully correct as the pos and vel are staggered
+      end
+    end
+    %------------------------------
+    function [dt,dt_1] = calculateTimeStep(obj,particle,vel,b,dt_2)
+      % calculates the time steps needed for the current interation given the conditions
+
+      q = particle.q;
+      m = particle.m;
+      dt0 = particle.max_dt;
+      steps = particle.gyroperiod_steps;
+      max_length = particle.max_step_length;
+
+      % Cyclotron frequency
+      wc = (q/m) * sqrt(dot(b,b));
+      dt1 = abs(2*pi/wc)/steps;
+
+      % Step length
+      dt2 = max_length / sqrt(dot(vel,vel));
+
+      % mean value
+      dt_1 = min([dt0,dt1,dt2]);    % New step
+      dt = 0.5*(dt_1 + dt_2);       % Mean step
+    end
+    %------------------------------
+    function ep = PerpendicularE(obj,e,b)
+      % Only get E perpendicular (this should only be done if running ideal MHD!!)
+      % B*B
+      b2 = dot(b,b);
+
+      % b normalized
+      bn = b./sqrt(b2);
+
+      % Make sure E perp to b
+      ep = e - dot(e,bn)*bn;
+    end
+    %------------------------------
+    function new_vel = boris(obj,V,e,b,dt,q,m)
+      % Gets the updated velocity using Brois algo.
+
+      % Set constant local variables
+      eta = q/m;
+      etadt2 = eta*dt/2;
+
+      % Calculate t and vmin (first half acceleration)
+      t = etadt2*b;
+      vmin = V + etadt2*e;
+
+      % Cross product (vmid = vmin + vmin x t)
+      vmid = vmin + cross(vmin,t);
+
+      % Calculate s
+      s = 2*t./(1+t.^2);
+
+      % Another cross product (vplus = vmin + vmid x s)
+      vplus = vmin + cross(vmid,s);
+
+      % Loop and set new velocities (second half acceleration)
+      new_vel = vplus + etadt2*e;
+    end
+    %------------------------------
+    function V = initialiseVelocity(obj,particle,ep,b)
+      % If no electric field, and not given, the reference direction from which the gyrophase is measured is [0 1 0];
+
+      % B^2
+      b2 = dot(b,b);
+
+      % B normalized
+      bn = b./sqrt(b2);
+
+      % E and ExB directions
+      if ep==[0,0,0]
+        % Get a reference direction (not ExB because there is no E field)
+        if isfield(particle,'RefDir')
+          ref = particle.RefDir;
+        else
+          ref = [0 1 0];
+        end
+        ExB = ref - dot(ref,bn).*bn;
+        ExB_n = ExB./sqrt(dot(ExB,ExB));
+        en = cross(bn,ExB_n);
+      else
+        en = ep./sqrt(dot(ep,ep));
+        % ExB-drift direction
+        ExB_n = cross(en,bn);
+        % get the en to be perp to bn and ExB_n
+        en = cross(bn,ExB_n);
+      end
+
+      % Add all the velocities
+      % 3 origins:  - the component along the b field, as given by user
+      %             - thermal component as given by the user taking into account the gyrophase, part of it is along the ExB component and some along the component of E perp to B
+
+      % ????????    - We add the ExB velocity here and it should therefore not be given by the user
+      V = particle.vpar.*bn + ...
+          particle.vperp.*cosd(particle.gyrophase).*ExB_n + ...
+          particle.vperp.*sind(particle.gyrophase).*en;
+          %particle.vperp.*sind(particle.gyrophase).*en + ...
+          %cross(ep,b)./b2;
+    end
+    %------------------------------------------------------------
+  end   % Methods (hidden, protected)
 end     % Class

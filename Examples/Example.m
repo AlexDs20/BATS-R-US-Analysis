@@ -2,13 +2,15 @@
 % Load cdf file into bats class
 if 0
   s = 'path/to/CDF.cdf';
+  %s = '/home/spiegel/Desktop/Programs/SWMF/data/3d__var_1_e20150321-122300-000.out.cdf';
   % to load all variables
   original = bats('file',s);
   % remove the variables we will not use
-  original.clearFields({'b1x','b1y','b1z','e'})
+  original.clearFields({'b1x','b1y','b1z','e'});
   % Convert to uniform grid (batsUni class)
-  uni = original.toBatsUni(0.125,{},'xrange',[-40 0],'yrange',[-20 20],'zrange',[-15 15]);
-  % save('/home/spiegel/Desktop/Programs/SWMF/data/uni.mat','uni','-v7.3');
+  uni = original.toBatsUni(0.125,{},'xrange',[-25  20],'yrange',[-20 20],'zrange',[-20 20]);
+  % save('/home/spiegel/Desktop/Programs/SWMF/data/uni_interp.mat','uni','-v7.3');
+
 else
   load('Path/to/data/converted/to/batsUni/format');
 end
